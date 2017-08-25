@@ -1,0 +1,8 @@
+iron
+src_old
+*.aux
+*.*~
+
+*.glob
+*.vo
+*.d
