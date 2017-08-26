@@ -45,6 +45,7 @@ Fixpoint
     => XMatch (liftX n d x) (map (liftA n d) alts)
     (* | XChoice t1 xs fp => XChoice t1 (map (liftX n d) xs) fp (* TODO *) *)
     | XChoice t1 xs fp => XChoice t1 xs fp
+    | XCall ac n' xs => XCall ac n' (map (liftX n d) xs)
     end
 
  with liftA (n: nat) (d: nat) (aa: alt) {struct aa}:=

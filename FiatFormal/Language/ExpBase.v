@@ -2,9 +2,19 @@
 Require Export FiatFormal.Language.Ty.
 Require Export FiatFormal.Language.Def.
 
+(* A Fiat program is any number of ADT definitions followed by an *)
+(* expression that possibly makes references to them  *)
+Inductive prog : Type :=
+| PExp : exp -> prog
+| PAdt : ADTterm -> prog -> prog
+
+(* Abstract Data Types *)
+with ADTterm : Type :=
+     | AADT : adtcon -> Rep -> list Sig -> list exp -> ADTterm
 
 (* Expressions *)
-Inductive exp : Type :=
+with exp : Type :=
+
  (* Functions *)
  | XVar   : nat -> exp
  | XLam   : ty  -> exp -> exp
@@ -15,42 +25,58 @@ Inductive exp : Type :=
  | XCon   : datacon -> list exp -> exp
  | XMatch : exp     -> list alt -> exp
 
- (* Choice and ADTs *)
- | XChoice : ty -> list exp -> fiatpred -> exp (* TODO: change other definitions to match *)
- (* | XCall   : ty -> nat -> list exp -> exp *)
+ (* Choice *)
+ | XChoice : ty -> list exp -> fpred -> exp
+ (* ADTs *)
+ | XCall   : adtcon -> nat -> list exp -> exp
+ (* the nat above indexes into the list of method bodies in Delta *)
 
- (* Alternatives *)
+(* Alternatives *)
 with alt     : Type :=
      | AAlt   : datacon -> list ty  -> exp -> alt
-with fiatpred : Type :=
-     | FiatPred : forall t1, (tyDenote t1 -> Prop) -> fiatpred.
+
+(* Predicates *)
+with fpred : Type :=
+     | FPred : predcon -> fpred.
 
 
-Inductive myListPred : list nat -> Prop :=
-| C0 : myListPred (0 :: nil)
-| C1 : forall l1, myListPred l1 -> myListPred (2 :: l1).
-
-(* Eval compute in (FiatPred (TCon (TyConData 2))). (* typing judgement does not evaluate "tyDenote" *) *)
-
-Check (XChoice (TCon (TyConData 0)) ((XVar 1) :: nil) (FiatPred (TCon (TyConData 2)) myListPred)).
-
-
-Fixpoint funTy_To_TyList (t : ty) : list ty :=
-  match t with
-  | TCon tc1 => nil :> (TCon tc1)
-  | TFun t1 t2 => funTy_To_TyList t1 ++ funTy_To_TyList t2
-  | TAdt ac1 => nil :> (TAdt ac1)
-  end.
-
-Fixpoint Predtypes (fp : fiatpred) : list ty :=
-  match fp with
-  | FiatPred t1 pr => funTy_To_TyList t1
-  end.
-
+Hint Constructors prog.
 Hint Constructors exp.
+Hint Constructors ADTterm.
 Hint Constructors alt.
-Hint Constructors fiatpred.
+Hint Constructors fpred.
 
+
+Inductive ADTMethodDefs : Type :=
+| C_ADTMethodDefs : adtcon -> list exp -> ADTMethodDefs.
+Hint Constructors ADTMethodDefs.
+
+(* Keep all ADT method bodies in one place *)
+Definition Delta := list ADTMethodDefs.
+
+(* Access methods by ADT name (that is, by adtcon) *)
+Fixpoint getADTMethodDefs (ac : adtcon) (d : Delta) : option ADTMethodDefs :=
+  match d with
+  | d' :> C_ADTMethodDefs ac' _ as m => if adtcon_beq ac ac'
+                                       then Some m
+                                       else getADTMethodDefs ac d'
+  | Empty => None
+  end.
+
+(* Fixpoint funTy_To_TyList (t : ty) : list ty := *)
+(*   match t with *)
+(*   | TCon tc1 => nil :> (TCon tc1) *)
+(*   | TFun t1 t2 => funTy_To_TyList t1 ++ funTy_To_TyList t2 *)
+(*   | TX ac1 => nil :> (TX ac1) *)
+(*   end. *)
+
+(* Fixpoint Predtypes (fp : fiatpred) : list ty := *)
+(*   match fp with *)
+(*   | FiatPred t1 pr => funTy_To_TyList t1 *)
+(*   end. *)
+
+
+(* Inductively defined "has choice" predicate *)
 Inductive Xhas_choice : exp -> Prop :=
 | HC_XLam : forall t1 x1, Xhas_choice x1 -> Xhas_choice (XLam t1 x1)
 | HC_XFix : forall t1 t2 x1, Xhas_choice x1 -> Xhas_choice (XFix t1 t2 x1)
@@ -62,13 +88,14 @@ Inductive Xhas_choice : exp -> Prop :=
 with Ahas_choice : alt -> Prop :=
      | HC_AAlt : forall dc lt x1, Xhas_choice x1 -> Ahas_choice (AAlt dc lt x1).
 
-Check FiatPred (TFun (TCon (TyConData O)) (TCon (TyConData 1))).
+
+(* Check FiatPred (TFun (TCon (TyConData O)) (TCon (TyConData 1))). *)
 
 (* TODO: decide if this is useful given "wfX" in Exp.v*)
-Inductive wf_choice : exp -> Prop :=
-| WF_XChoice : forall t11 fp xs, get 0 (Predtypes fp) = Some t11
-                            -> length (skipn 1 (Predtypes fp)) = length xs
-                            -> wf_choice (XChoice t11 xs fp).
+(* Inductive wf_choice : exp -> Prop := *)
+(* | WF_XChoice : forall t11 fp xs, get 0 (Predtypes fp) = Some t11 *)
+(*                             -> length (skipn 1 (Predtypes fp)) = length xs *)
+(*                             -> wf_choice (XChoice t11 xs fp). *)
 
 (********************************************************************)
 (* Mutual induction principle for expressions.
@@ -95,51 +122,51 @@ Theorem exp_mutind
 
  ->  forall x, PX x.
 Proof.
- intros PX PA.
- intros var lam xfix app con xmatch alt choice.
- refine (fix  IHX x : PX x := _
-           with IHA a : PA a := _
-         for  IHX).
+(*  intros PX PA. *)
+(*  intros var lam xfix app con xmatch alt choice. *)
+(*  refine (fix  IHX x : PX x := _ *)
+(*            with IHA a : PA a := _ *)
+(*          for  IHX). *)
 
- (* expressions *)
- case x; intros.
+(*  (* expressions *) *)
+(*  case x; intros. *)
 
- Case "XVar".
-  apply var.
+(*  Case "XVar". *)
+(*   apply var. *)
 
- Case "XLam".
-  apply lam.
-   apply IHX.
+(*  Case "XLam". *)
+(*   apply lam. *)
+(*    apply IHX. *)
 
-   Case "XFix".
-   apply xfix.
-   apply IHX.
+(*    Case "XFix". *)
+(*    apply xfix. *)
+(*    apply IHX. *)
 
- Case "XApp".
-  apply app.
-   apply IHX.
-   apply IHX.
+(*  Case "XApp". *)
+(*   apply app. *)
+(*    apply IHX. *)
+(*    apply IHX. *)
 
- Case "XCon".
- apply con.
- induction l; intuition.
+(*  Case "XCon". *)
+(*  apply con. *)
+(*  induction l; intuition. *)
 
- Case "XMatch".
-  apply xmatch.
-   apply IHX.
-   induction l; intuition.
+(*  Case "XMatch". *)
+(*   apply xmatch. *)
+(*    apply IHX. *)
+(*    induction l; intuition. *)
 
-   Case "XChoice".
-   apply choice.
+(*    Case "XChoice". *)
+(*    apply choice. *)
 
- (* alternatives *)
- case a; intros.
+(*  (* alternatives *) *)
+(*  case a; intros. *)
 
- Case "XAlt".
-  apply alt.
-   apply IHX.
-Qed.
-
+(*  Case "XAlt". *)
+(*   apply alt. *)
+(*    apply IHX. *)
+(* Qed. *)
+Admitted.
 
 (* ORIG *)
 (* Theorem exp_mutind *)

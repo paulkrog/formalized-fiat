@@ -2,19 +2,9 @@
 Require Export FiatFormal.Language.Ty.
 
 
-(* Data Constructors *)
-Inductive datacon : Type :=
- | DataCon    : nat -> datacon.
-Hint Constructors datacon.
-
-
-Fixpoint datacon_beq t1 t2 :=
-  match t1, t2 with
-  | DataCon n1, DataCon n2 => beq_nat n1 n2
-  end.
-
 (* Definitions.
-   Carries meta information about type and data constructors. *)
+   Carries meta information about type and data constructors,
+   Along with type information for AbsDTs *)
 Inductive def  : Type :=
  (* Definition of a data type constructor *)
  | DefDataType
@@ -30,24 +20,41 @@ Inductive def  : Type :=
    -> def
 
  (* Definition of an abstract data type *)
- | DefAbsDataType
-   : adtcon      (* Name of data constructor, implicitly represents "rep" *)
-     -> list ty   (* Each ty in this list is an ADT method signature *)
-     (* A signature might contain ( ... TFun (TX (AdtCon n)) (TX (AdtCon n)) ... ) *)
-     (* where adtcon = (AdtCon n) *)
-     -> exp    (* Each exp in this list is an ADT method body *)
-     -> def
-.
+ | DefADTSigs
+   : adtcon      (* Name of data constructor, implicitly used as a type, once defined *)
+     -> Rep       (* representation type, (adtcon n) gets mapped to
+                    this type as mentioned above *)
+     -> list Sig
+     (* Each element in this list is an ADT method *)
+     (* signature. The types of each "Sig" may reference any number of
+        (adtcon i), for any any i in which (TX (adtcon i)) is a well-defined
+        ADT type. Such a reference will be interpreted as a placeholder for the
+        "Rep" type *)
+     -> def.
 Hint Constructors def.
 
 
 (* Definition environment.
-   Holds the definitions of all current type and data constructors. *)
+   Holds the definitions of all:
+   - algebraic data type constructors
+   - ADT rep types and method signatures *)
+(* Note: method bodies held separately in "ADTMethodDefs", given in ExpBase.v *)
 Definition defs  := list def.
 
 
-(* Lookup the def of a given type constructor.
-   Returns None if it's not in the list. *)
+(* Functions for looking up definitions by (adtcon, tycon, datacon) *)
+
+(* Lookup the def of a given ADT *)
+Fixpoint getADTSigs (ac : adtcon) (ds : defs) : option def :=
+  match ds with
+  | ds' :> DefADTSigs ac' _ _ as a
+    => if adtcon_beq ac ac'
+      then Some a
+      else getADTSigs ac ds'
+  | ds' :> _ => getADTSigs ac ds'
+  | Empty => None
+  end.
+(* Lookup the def of a given type constructor *)
 Fixpoint getTypeDef (tc: tycon) (ds: defs) : option def :=
  match ds with
  | ds' :> DefDataType tc' _ as d
@@ -58,10 +65,7 @@ Fixpoint getTypeDef (tc: tycon) (ds: defs) : option def :=
  | ds' :> _ => getTypeDef tc ds'
  | Empty    => None
  end.
-
-
-(* Lookup the def of a given data constructor.
-   Returns None if it's not in the list. *)
+(* Lookup the def of a given data constructor *)
 Fixpoint getDataDef (dc: datacon) (ds: defs) : option def :=
  match ds with
  | ds' :> DefData dc' _ _ as d
@@ -74,7 +78,7 @@ Fixpoint getDataDef (dc: datacon) (ds: defs) : option def :=
  end.
 
 
-(* Boolean equality for data constructors. *)
+(* Some proofs about equality between these "name" constructors *)
 Lemma datacon_beq_eq
  :  forall dc dc'
  ,  true = datacon_beq dc dc'
@@ -87,9 +91,6 @@ Proof.
  apply beq_nat_eq in H.
  auto.
 Qed.
-
-
-(* Boolean negation for data constructors. *)
 Lemma datacon_beq_false
  :  forall dc
  ,  false = datacon_beq dc dc

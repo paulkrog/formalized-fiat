@@ -41,6 +41,7 @@ Fixpoint
     => XMatch (substX d u x) (map (substA d u) alts)
 
     | XChoice t1 t2 pr => XChoice t1 t2 pr (* TODO *)
+    | XCall ac n xs => XCall ac n (map (substX d u) xs)
     end
 
 with substA (d: nat) (u: exp) (aa: alt)

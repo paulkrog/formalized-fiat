@@ -55,12 +55,12 @@ Inductive TYPE : defs -> tyenv -> exp -> ty -> Prop :=
 
    -> TYPE ds te (XMatch xObj alts) tResult
 
- | TYChoice
-   : forall ds te t1 xs fp,
-     let lty := (Predtypes fp) in
-     Some t1 = get 0 lty
-     -> Forall2 (TYPE ds te) xs (skipn 1 lty)
-     -> TYPE ds te (XChoice t1 xs fp) t1 (* TODO *)
+ (* | TYChoice *)
+ (*   : forall ds te t1 xs fp, *)
+ (*     let lty := (Predtypes fp) in *)
+ (*     Some t1 = get 0 lty *)
+ (*     -> Forall2 (TYPE ds te) xs (skipn 1 lty) *)
+ (*     -> TYPE ds te (XChoice t1 xs fp) t1 (* TODO *) *)
 
 with TYPEA : defs -> tyenv -> alt -> ty -> ty -> Prop :=
  (* Match Alternatives *)
