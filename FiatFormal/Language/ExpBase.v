@@ -1,3 +1,8 @@
+(* Thoughts: *)
+
+(* 1. algebraic data types are assumed to be defined in "defs"
+   2. should AbsDTs be managed similarly? i.e. don't embed the syntax
+      of an ADT definition nor the binding of ADTs to Xs *)
 
 Require Export FiatFormal.Language.Ty.
 Require Export FiatFormal.Language.Def.

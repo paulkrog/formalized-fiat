@@ -3,7 +3,22 @@ Require Export FiatFormal.Language.Exp.
 
 
 (* Type Judgement assigns a type to an expression. *)
-Inductive TYPE : defs -> tyenv -> exp -> ty -> Prop :=
+Inductive TYPEProg : defs -> delt -> tyenv -> prog -> ty -> Prop :=
+(* Typing an ADT-less program *)
+| TYExp
+  : forall x ds dlt te t1,
+    TYPEX ds dlt te x t1
+    -> TYPEProg ds dlt te (PExp x) t1
+(* Typing program with ADTs *)
+| TYAdtProg
+  : forall p ds dlt te t1,
+    (* type adt under the current environment *)
+
+
+    -> TYPEProg ds dlt te (PAdt adt p)
+
+
+with TYPEX : defs -> delt -> tyenv -> exp -> ty -> Prop :=
  (* Variables *)
  | TYVar
    :  forall ds te i t
@@ -55,12 +70,14 @@ Inductive TYPE : defs -> tyenv -> exp -> ty -> Prop :=
 
    -> TYPE ds te (XMatch xObj alts) tResult
 
- (* | TYChoice *)
- (*   : forall ds te t1 xs fp, *)
- (*     let lty := (Predtypes fp) in *)
- (*     Some t1 = get 0 lty *)
- (*     -> Forall2 (TYPE ds te) xs (skipn 1 lty) *)
- (*     -> TYPE ds te (XChoice t1 xs fp) t1 (* TODO *) *)
+ | TYChoice
+   : forall t1 t2 xs P,
+     TYPEP ds te P t2
+     -> TYPE ds te (XChoice t1 xs P) t1
+
+with TYPEP : defs -> tyenv -> fpred -> ty -> Prop :=
+     | TYPred : forall ds te pc t1,
+         TYPEP ds te (FPred pc) (TPred pc)
 
 with TYPEA : defs -> tyenv -> alt -> ty -> ty -> Prop :=
  (* Match Alternatives *)
