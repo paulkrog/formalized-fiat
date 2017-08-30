@@ -66,6 +66,13 @@ Inductive wfX : tyenv -> exp -> Prop :=
  (* | WfX_XChoice : forall te t11 fp xs, get 0 (Predtypes fp) = Some t11 *)
  (*                                 -> length (skipn 1 (Predtypes fp)) = length xs *)
  (*                                 -> wfX te (XChoice t11 xs fp) *)
+ (* | WfX_XCall *)
+ (*   : forall ds x ts te xs ac n, *)
+ (*     getADTMethodBody ac n ds  = Some x *)
+ (*     -> getADTMethodSig ac n ds = Some ts *)
+ (*     -> wfX (delete ((length ts) - 1) ts) x (* Having appropriate size of tyenv all the matters here *) *)
+ (*     -> Forall (wfX te) xs *)
+ (*     -> wfX te (XCall ac n xs) *)
 
 with    wfA : tyenv -> alt -> Prop :=
  | WfA_AAlt

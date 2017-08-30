@@ -39,6 +39,12 @@ Inductive STEP : exp -> exp -> Prop :=
    -> STEP (XMatch (XCon dc vs) alts)
           (substXs 0 vs x)
 
+ | EsADTCall
+   : forall ds ac n vs x,
+     Forall wnfX vs
+   -> getADTMethodBody ac n ds = Some x
+   -> STEP (XCall ac n vs) (substXs 0 vs x)
+
  (* | EsChoice *)
  (*   : forall t1 xs t11 pr fp, *)
  (*     fp = FiatPred t11 pr -> *)

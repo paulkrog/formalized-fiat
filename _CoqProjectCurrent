@@ -1,6 +1,6 @@
 -R FiatFormal FiatFormal
 
-FiatFormal/Language/Def.v
+FiatFormal/Language/Alg.v
 FiatFormal/Language/Ty.v
 FiatFormal/Language/TyJudge.v
 FiatFormal/Language/SubstExpExp.v
@@ -61,3 +61,4 @@ FiatFormal/Tactics/Short.v
 
 FiatFormal/Norm.v
 FiatFormal/Tactics.v
+FiatFormal/PMKList.v

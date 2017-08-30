@@ -1,24 +1,20 @@
-(* Thoughts: *)
+(* Thoughts/Qs: *)
 
-(* 1. algebraic data types are assumed to be defined in "defs"
-   2. should AbsDTs be managed similarly? i.e. don't embed the syntax
-      of an ADT definition nor the binding of ADTs to Xs *)
+(* - should method bodies be typed at the point of use? i.e. as a premise
+      to typing an XCall? No, let the typing entire adt be a premise
+   - how should I handle product types in ADT signatures? Define
+      FiatProdType and use it
+   - seems a more precise treatment of Fiat would have explicit
+      existential types? Yes, but very tedious *)
+
+(* General TODO:
+   - experiment with simple mutually recursive type to understand exp_mutinds that coq generates *)
 
 Require Export FiatFormal.Language.Ty.
-Require Export FiatFormal.Language.Def.
-
-(* A Fiat program is any number of ADT definitions followed by an *)
-(* expression that possibly makes references to them  *)
-Inductive prog : Type :=
-| PExp : exp -> prog
-| PAdt : ADTterm -> prog -> prog
-
-(* Abstract Data Types *)
-with ADTterm : Type :=
-     | AADT : adtcon -> Rep -> list Sig -> list exp -> ADTterm
+Require Export FiatFormal.Language.Alg.
 
 (* Expressions *)
-with exp : Type :=
+Inductive exp : Type :=
 
  (* Functions *)
  | XVar   : nat -> exp
@@ -34,7 +30,7 @@ with exp : Type :=
  | XChoice : ty -> list exp -> fpred -> exp
  (* ADTs *)
  | XCall   : adtcon -> nat -> list exp -> exp
- (* the nat above indexes into the list of method bodies in Delta *)
+ (* the nat above indexes into the list of method bodies in adt_defs *)
 
 (* Alternatives *)
 with alt     : Type :=
@@ -45,41 +41,100 @@ with fpred : Type :=
      | FPred : predcon -> fpred.
 
 
-Hint Constructors prog.
 Hint Constructors exp.
-Hint Constructors ADTterm.
 Hint Constructors alt.
 Hint Constructors fpred.
 
 
-Inductive ADTMethodDefs : Type :=
-| C_ADTMethodDefs : adtcon -> list exp -> ADTMethodDefs.
-Hint Constructors ADTMethodDefs.
+Inductive adt_def : Type :=
+(* Definition of an abstract data type *)
+| DefADT
+  : adtcon      (* Name of data constructor, implicitly used as a type, once defined *)
+    -> Rep       (* representation type, (adtcon n) gets mapped to *)
+    (*                    this type as mentioned above *)
+    -> list Sig
+    -> list exp
+    -> adt_def.
+Hint Constructors adt_def.
 
-(* Keep all ADT method bodies in one place *)
-Definition Delta := list ADTMethodDefs.
 
-(* Access methods by ADT name (that is, by adtcon) *)
-Fixpoint getADTMethodDefs (ac : adtcon) (d : Delta) : option ADTMethodDefs :=
-  match d with
-  | d' :> C_ADTMethodDefs ac' _ as m => if adtcon_beq ac ac'
-                                       then Some m
-                                       else getADTMethodDefs ac d'
+(* Definition environment *)
+Definition adt_defs  := list adt_def.
+
+
+(* Functions for looking up definitions by adtcon *)
+
+(* Lookup the definition of a given ADT *)
+Fixpoint getADTDef (ac : adtcon) (ds : adt_defs) : option adt_def :=
+  match ds with
+  | ds' :> DefADT ac' _ _ _ as a
+    => if adtcon_beq ac ac'
+      then Some a
+      else getADTDef ac ds'
   | Empty => None
   end.
-
-(* Fixpoint funTy_To_TyList (t : ty) : list ty := *)
-(*   match t with *)
-(*   | TCon tc1 => nil :> (TCon tc1) *)
-(*   | TFun t1 t2 => funTy_To_TyList t1 ++ funTy_To_TyList t2 *)
-(*   | TX ac1 => nil :> (TX ac1) *)
-(*   end. *)
-
-(* Fixpoint Predtypes (fp : fiatpred) : list ty := *)
-(*   match fp with *)
-(*   | FiatPred t1 pr => funTy_To_TyList t1 *)
-(*   end. *)
-
+(* Lookup Rep type by indexing into definitions by adtcon *)
+Fixpoint getADTRep (ac : adtcon) (ds : adt_defs) : option Rep :=
+  match getADTDef ac ds with
+  | Some (DefADT ac' r sigs xs) => Some r
+  | _ => None
+  end.
+(* Lookup method signature by indexing into ADT def *)
+Fixpoint getADTSig (ac : adtcon) (n : nat) (ds : adt_defs) : option Sig :=
+  match getADTDef ac ds with
+  | Some (DefADT ac' r sigs xs) => get n sigs
+  | _ => None (* loss of information here, best practices in this situation? *)
+  end.
+(* Lookup method body by indexing into ADT def *)
+Fixpoint getADTBody (ac : adtcon) (n : nat) (ds : adt_defs) : option exp :=
+  match getADTDef ac ds with
+  | Some (DefADT ac' r sigs xs) => get n xs
+  | _ => None (* loss of information here, best practices in this situation? *)
+  end.
+Fixpoint getADTNumMethods (ac : adtcon) (ds : adt_defs) : option nat :=
+  match getADTDef ac ds with
+  | Some (DefADT ac' r sigs xs) => Some (length sigs)
+  | _ => None
+  end.
+Fixpoint getADTSigs (ac : adtcon) (ds : adt_defs) : option (list Sig) :=
+  match getADTDef ac ds with
+  | Some (DefADT ac' r sigs xs) => Some sigs
+  | _ => None
+  end.
+Fixpoint getADTBodies (ac : adtcon) (ds : adt_defs) : option (list exp) :=
+  match getADTDef ac ds with
+  | Some (DefADT ac' r sigs xs) => Some xs
+  | _ => None
+  end.
+Fixpoint getRep (d : adt_def) : Rep :=
+  match d with
+  | DefADT ac r sigs xs => r
+  end.
+Fixpoint getSig (n : nat) (d : adt_def) : option Sig :=
+  match d with
+  | DefADT ac r sigs xs => get n sigs
+  end.
+Fixpoint getBody (n : nat) (d : adt_def) : option exp :=
+  match d with
+  | DefADT ac r sigs xs => get n xs
+  end.
+Fixpoint getNumMethods (d : adt_def) : nat :=
+  match d with
+  | DefADT ac r sigs xs => length sigs
+  end.
+Fixpoint getSigs (d : adt_def) : list Sig :=
+  match d with
+  | DefADT ac r sigs xs => sigs
+  end.
+Fixpoint getBodies (d : adt_def) : list exp :=
+  match d with
+  | DefADT ac r sigs xs => xs
+  end.
+Fixpoint getADTCons (ds : adt_defs) : list adtcon :=
+  match ds with
+  | (DefADT ac r sigs xs) :: ds' => ac :: (getADTCons ds')
+  | nil => nil
+  end.
 
 (* Inductively defined "has choice" predicate *)
 Inductive Xhas_choice : exp -> Prop :=
@@ -94,14 +149,7 @@ with Ahas_choice : alt -> Prop :=
      | HC_AAlt : forall dc lt x1, Xhas_choice x1 -> Ahas_choice (AAlt dc lt x1).
 
 
-(* Check FiatPred (TFun (TCon (TyConData O)) (TCon (TyConData 1))). *)
-
-(* TODO: decide if this is useful given "wfX" in Exp.v*)
-(* Inductive wf_choice : exp -> Prop := *)
-(* | WF_XChoice : forall t11 fp xs, get 0 (Predtypes fp) = Some t11 *)
-(*                             -> length (skipn 1 (Predtypes fp)) = length xs *)
-(*                             -> wf_choice (XChoice t11 xs fp). *)
-
+(* TODO: change this *)
 (********************************************************************)
 (* Mutual induction principle for expressions.
    As expressions are indirectly mutually recursive with lists,

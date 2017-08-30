@@ -54,32 +54,40 @@ Hint Constructors ty.
 
 (* Type Environment *)
 Definition tyenv := list ty.
-(* A type for method signatures *)
-Inductive Sig : Type :=
-(* A list of input types and an output type *)
-| C_Sig : list ty -> ty -> Sig.
-Hint Constructors Sig.
 (* Helpful alias -- should Rep be restricted to algebraic data types? *)
 Definition Rep   := ty.
 
+(* A Record for method signatures -- "Set" ok? *)
+Record Sig : Set := mkSig
+        {arity : nat;
+         dom : list ty;
+         cod : ty }.
+
+Fixpoint buildTyList (n : nat) (t : ty) : list ty :=
+  match n with
+  | O => nil
+  | S n' => (buildTyList n' t) :> t
+  end.
+Definition buildMethodTyEnv (r : ty) (s : Sig) : list ty :=
+  (buildTyList s.(arity) r) >< s.(dom).
+
+(* Set Printing Projections. *)
+(* Print buildMethodTyEnv. *)
 
 (* Example: naming new algebraic data types *)
 Notation FiatUnitType := (TyConData 0).
 Notation FiatNatType := (TyConData 1).
 Notation FiatListType := (TyConData 2).
+Notation FiatProdType := (TyConData 3). (* TODO: use in signatures *)
 
 
-
-(* Not sure where the concept below might get used *)
-
-(* Fixpoint tyDenote (t : ty) : Set := *)
-(*   match t with *)
-(*   | TCon tc => match tc with *)
-(*               | FiatUnitType => unit *)
-(*               | FiatNatType => nat *)
-(*               | FiatListType => list nat *)
-(*               | _ => unit (* TODO *) end *)
-(*   | TFun t1 t2 => (tyDenote t1 -> tyDenote t2) *)
-(*   | TX ac => nat (* TODO *) *)
-(*   | TPred pc => nat *)
-(*   end. *)
+(* function for replacing references to (TAdt (AdtCon n)) with Rep in a list of ty. *)
+(* used to type check method bodies *)
+Fixpoint replace_TAdt_by_Rep (x : ty) (ac : adtcon) (l : list ty) : list ty :=
+  match l with
+  | nil => nil
+  | (TAdt ac') :: l' => if adtcon_beq ac ac'
+                       then x          :: (replace_TAdt_by_Rep x ac l')
+                       else (TAdt ac') :: (replace_TAdt_by_Rep x ac l')
+  | x' :: l' => x' :: (replace_TAdt_by_Rep x ac l')
+  end.
