@@ -78,16 +78,16 @@ Definition buildMethodTyEnv (r : ty) (s : Sig) : list ty :=
 Notation FiatUnitType := (TyConData 0).
 Notation FiatNatType := (TyConData 1).
 Notation FiatListType := (TyConData 2).
-Notation FiatProdType := (TyConData 3). (* TODO: use in signatures *)
+Notation FiatProdType := (TyConData 3). (* TODO: use in signatures? *)
+Notation FiatProdData := (DataCon 0).
 
-
-(* function for replacing references to (TAdt (AdtCon n)) with Rep in a list of ty. *)
-(* used to type check method bodies *)
-Fixpoint replace_TAdt_by_Rep (x : ty) (ac : adtcon) (l : list ty) : list ty :=
-  match l with
-  | nil => nil
-  | (TAdt ac') :: l' => if adtcon_beq ac ac'
-                       then x          :: (replace_TAdt_by_Rep x ac l')
-                       else (TAdt ac') :: (replace_TAdt_by_Rep x ac l')
-  | x' :: l' => x' :: (replace_TAdt_by_Rep x ac l')
-  end.
+(* (* function for replacing references to (TAdt (AdtCon n)) with Rep in a list of ty. *) *)
+(* (* used to type check method bodies *) *)
+(* Fixpoint replace_TAdt_by_Rep (x : ty) (ac : adtcon) (l : list ty) : list ty := *)
+(*   match l with *)
+(*   | nil => nil *)
+(*   | (TAdt ac') :: l' => if adtcon_beq ac ac' *)
+(*                        then x          :: (replace_TAdt_by_Rep x ac l') *)
+(*                        else (TAdt ac') :: (replace_TAdt_by_Rep x ac l') *)
+(*   | x' :: l' => x' :: (replace_TAdt_by_Rep x ac l') *)
+(*   end. *)

@@ -64,7 +64,7 @@ Inductive TYPE : alg_defs -> adt_defs -> tyenv -> exp -> ty -> Prop :=
      (* check that all adts are well typed *)
      WELL_TYPED_ADTS alg_ds adt_ds
      -> getADTSig ac n adt_ds = Some s
-     -> Forall2 (TYPE alg_ds adt_ds te) xs (buildMethodTyEnv (TAdt ac) s)
+     -> Forall2 (TYPE alg_ds adt_ds te) xs (buildMethodTyEnv (TAdt ac) s) (* OPAQUE *)
      -> TYPE alg_ds adt_ds te (XCall ac n xs) s.(cod)
 
 with WELL_TYPED_ADTS : alg_defs -> adt_defs -> Prop :=
