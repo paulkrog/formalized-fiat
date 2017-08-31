@@ -85,8 +85,8 @@ with WELL_TYPED_ADT : alg_defs -> adt_defs -> adtcon -> Prop :=
 
 with TYPEP : alg_defs -> adt_defs -> tyenv -> fpred -> ty -> Prop :=
      (* placeholder for predicate typing -- this is old *)
-     | TYPred : forall alg_ds adt_ds te pc,
-         TYPEP alg_ds adt_ds te (FPred pc) (TPred pc)
+     | TYPred : forall alg_ds adt_ds te pc x,
+         TYPEP alg_ds adt_ds te (FPred pc x) (TPred pc)
 
 with TYPEA : alg_defs -> adt_defs -> tyenv -> alt -> ty -> ty -> Prop :=
      (* Match Alternatives *)
@@ -102,34 +102,21 @@ Hint Constructors TYPEP.
 Hint Constructors WELL_TYPED_ADTS.
 Hint Constructors WELL_TYPED_ADT.
 
-(* Inductive wellTypedMethod : *)
-
-
-(* Inductive wfDef : def -> Prop := *)
-(* | WF_DTYPE : forall tc dcs, wfDef (DefDataType tc dcs) *)
-(* | WF_DATA  : forall dc ts tResult, wfDef (DefDataType dc ts tResult) *)
-(* | WF_ADT   : forall ac r sigs xs ds te, *)
-(*     let sigs' := map (replace_TAdt_with_Rep r ac) sigs *)
-(*     in *)
-(*     Forall2 (TYPE ds (te >< sigs')) xs (map get_last sigs') *)
-
-(*             Inductive wfDefs : defs -> Prop := *)
-(* | WFD_NIL  : wfDefs nil *)
-(* | WFD_CONS : forall d ds, wfDef d -> wfDefs ds -> wfDefs (ds :> d). *)
-
 
 (* Invert all hypothesis that are compound typing statements. *)
 Ltac inverts_type :=
  repeat
   (match goal with
-   | [ H: TYPE  _ _ (XVar  _)    _    |- _ ] => inverts H
-   | [ H: TYPE  _ _ (XLam  _ _)  _    |- _ ] => inverts H
-   | [ H: TYPE _ _ (XFix _ _ _)  _    |- _ ] => inverts H
-   | [ H: TYPE  _ _ (XApp  _ _)  _    |- _ ] => inverts H
-   | [ H: TYPE  _ _ (XCon  _ _)  _    |- _ ] => inverts H
-   | [ H: TYPE  _ _ (XMatch _ _)  _    |- _ ] => inverts H
-   | [ H: TYPE  _ _ (XChoice _ _ _) _  |- _ ] => inverts H
-   | [ H: TYPEA _ _ (AAlt _ _ _) _ _  |- _ ] => inverts H
+   | [ H: TYPE _ _ _ (XVar  _)    _    |- _ ] => inverts H
+   | [ H: TYPE _ _ _ (XLam  _ _)  _    |- _ ] => inverts H
+   | [ H: TYPE _ _ _ (XFix _ _ _)  _    |- _ ] => inverts H
+   | [ H: TYPE _ _ _ (XApp  _ _)  _    |- _ ] => inverts H
+   | [ H: TYPE _ _ _ (XCon  _ _)  _    |- _ ] => inverts H
+   | [ H: TYPE _ _ _ (XMatch _ _)  _    |- _ ] => inverts H
+   | [ H: TYPE _ _ _ (XChoice _ _ _) _  |- _ ] => inverts H
+   | [ H: TYPEA _ _ _ (AAlt _ _ _) _ _  |- _ ] => inverts H
+   | [ H: TYPE _ _ _ (XCall _ _ _) _ |- _ ] => inverts H
+   | [ H: TYPEP _ _ _ (FPred _ _) _ |- _ ] => inverts H
    end).
 
 

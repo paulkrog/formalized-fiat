@@ -70,6 +70,7 @@ Fixpoint buildTyList (n : nat) (t : ty) : list ty :=
   end.
 Definition buildMethodTyEnv (r : ty) (s : Sig) : list ty :=
   (buildTyList s.(arity) r) >< s.(dom).
+(* Definition buildMethodCodomainTy (r : ty) := term. *)
 
 (* Set Printing Projections. *)
 (* Print buildMethodTyEnv. *)

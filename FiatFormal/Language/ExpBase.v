@@ -1,14 +1,15 @@
 (* Thoughts/Qs: *)
 
-(* - should method bodies be typed at the point of use? i.e. as a premise
-      to typing an XCall? No, let the typing entire adt be a premise
+(*
    - how should I handle product types in ADT signatures? Define
       FiatProdType and use it
    - seems a more precise treatment of Fiat would have explicit
-      existential types? Yes, but very tedious *)
+      existential types? Yes, but very tedious
+*)
 
 (* General TODO:
-   - experiment with simple mutually recursive type to understand exp_mutinds that coq generates *)
+   - Remove XLam and everything related
+ *)
 
 Require Export FiatFormal.Language.Ty.
 Require Export FiatFormal.Language.Alg.
@@ -38,7 +39,7 @@ with alt     : Type :=
 
 (* Predicates *)
 with fpred : Type :=
-     | FPred : predcon -> fpred.
+     | FPred : predcon -> exp -> fpred.
 
 
 Hint Constructors exp.
@@ -137,16 +138,20 @@ Fixpoint getADTCons (ds : adt_defs) : list adtcon :=
   end.
 
 (* Inductively defined "has choice" predicate *)
-Inductive Xhas_choice : exp -> Prop :=
-| HC_XLam : forall t1 x1, Xhas_choice x1 -> Xhas_choice (XLam t1 x1)
-| HC_XFix : forall t1 t2 x1, Xhas_choice x1 -> Xhas_choice (XFix t1 t2 x1)
-| HC_XApp1 : forall x1 x2, Xhas_choice x1 -> Xhas_choice (XApp x1 x2)
-| HC_XApp2 : forall x1 x2, Xhas_choice x2 -> Xhas_choice (XApp x1 x2)
-| HC_XCon : forall dc le, Exists (Xhas_choice) le -> Xhas_choice (XCon dc le)
-| HC_XMatch : forall x1 la, Exists (Ahas_choice) la -> Xhas_choice (XMatch x1 la)
-| HC_XChoice : forall t1 le fp, Xhas_choice (XChoice t1 le fp)
-with Ahas_choice : alt -> Prop :=
-     | HC_AAlt : forall dc lt x1, Xhas_choice x1 -> Ahas_choice (AAlt dc lt x1).
+Inductive Xhas_choice : adt_defs -> exp -> Prop :=
+| HC_XLam : forall adt_ds t1 x1, Xhas_choice adt_ds x1 -> Xhas_choice adt_ds (XLam t1 x1)
+| HC_XFix : forall adt_ds t1 t2 x1, Xhas_choice adt_ds x1 -> Xhas_choice adt_ds (XFix t1 t2 x1)
+| HC_XApp1 : forall adt_ds x1 x2, Xhas_choice adt_ds x1 -> Xhas_choice adt_ds (XApp x1 x2)
+| HC_XApp2 : forall adt_ds x1 x2, Xhas_choice adt_ds x2 -> Xhas_choice adt_ds (XApp x1 x2)
+| HC_XCon : forall adt_ds dc le, Exists (Xhas_choice adt_ds) le -> Xhas_choice adt_ds (XCon dc le)
+| HC_XMatch : forall adt_ds x1 la, Exists (Ahas_choice adt_ds) la -> Xhas_choice adt_ds (XMatch x1 la)
+| HC_XChoice : forall adt_ds t1 le fp, Xhas_choice adt_ds (XChoice t1 le fp)
+| HC_XCall : forall adt_ds ac n xs xbody,
+    Exists (Xhas_choice adt_ds) xs
+    -> getADTBody ac n adt_ds = Some xbody
+    -> Xhas_choice adt_ds (XCall ac n xs)
+with Ahas_choice : adt_defs -> alt -> Prop :=
+     | HC_AAlt : forall adt_ds dc lt x1, Xhas_choice adt_ds x1 -> Ahas_choice adt_ds (AAlt dc lt x1).
 
 
 (* TODO: change this *)
@@ -159,7 +164,7 @@ Theorem exp_mutind
  : forall
     (PX : exp -> Prop)
     (PA : alt -> Prop)
-    (* (PF : fiatpred -> Prop) *)
+    (PF : fpred -> Prop)
  ,  (forall n,                                PX (XVar n))
     -> (forall t  x1,   PX x1                 -> PX (XLam t x1))
     -> (forall t1 t2 x1, PX x1 -> PX (XFix t1 t2 x1))
@@ -168,58 +173,70 @@ Theorem exp_mutind
  -> (forall x  aa,   PX x  -> Forall PA aa -> PX (XMatch x aa))
  -> (forall dc ts x, PX x                  -> PA (AAlt dc ts x))
 
- (* TODO: show ben  *)
- (* -> (forall t1 xs fp, PF fp -> Forall PX xs -> PX (XChoice t1 xs fp)) *)
- (* -> (forall t1 pr, PF (FiatPred t1 pr)) *)
- -> (forall t1 xs fp, PX (XChoice t1 xs fp))
+ -> (forall t1 xs fp, PF fp -> Forall PX xs -> PX (XChoice t1 xs fp)) (* TODO *)
+ -> (forall pc x, PX x -> PF (FPred pc x))
+ -> (forall ac n xs,  Forall PX xs -> PX (XCall ac n xs)) (* TODO: I expect this to be not provable *)
 
  ->  forall x, PX x.
 Proof.
-(*  intros PX PA. *)
-(*  intros var lam xfix app con xmatch alt choice. *)
-(*  refine (fix  IHX x : PX x := _ *)
-(*            with IHA a : PA a := _ *)
-(*          for  IHX). *)
+ intros PX PA PF.
+ intros var lam xfix app con xmatch alt choice fpre call.
+ refine (fix  IHX x : PX x := _
+           with IHA a : PA a := _
+           with IHF f : PF f := _
+                                  for  IHX).
 
-(*  (* expressions *) *)
-(*  case x; intros. *)
+ (* expressions *)
+ case x; intros.
 
-(*  Case "XVar". *)
-(*   apply var. *)
+ Case "XVar".
+  apply var.
 
-(*  Case "XLam". *)
-(*   apply lam. *)
-(*    apply IHX. *)
+ Case "XLam".
+  apply lam.
+   apply IHX.
 
-(*    Case "XFix". *)
-(*    apply xfix. *)
-(*    apply IHX. *)
+   Case "XFix".
+   apply xfix.
+   apply IHX.
 
-(*  Case "XApp". *)
-(*   apply app. *)
-(*    apply IHX. *)
-(*    apply IHX. *)
+ Case "XApp".
+  apply app.
+   apply IHX.
+   apply IHX.
 
-(*  Case "XCon". *)
-(*  apply con. *)
-(*  induction l; intuition. *)
+ Case "XCon".
+ apply con.
+ induction l; intuition.
 
-(*  Case "XMatch". *)
-(*   apply xmatch. *)
-(*    apply IHX. *)
-(*    induction l; intuition. *)
+ Case "XMatch".
+  apply xmatch.
+   apply IHX.
+   induction l; intuition.
 
-(*    Case "XChoice". *)
-(*    apply choice. *)
+   Case "XChoice".
+   apply choice.
+   apply IHF.
+   induction l; intuition.
 
-(*  (* alternatives *) *)
-(*  case a; intros. *)
+   Case "XCall".
+   apply call.
+   induction l; intuition.
 
-(*  Case "XAlt". *)
-(*   apply alt. *)
-(*    apply IHX. *)
-(* Qed. *)
-Admitted.
+ (* alternatives *)
+ case a; intros.
+
+ Case "XAlt".
+  apply alt.
+   apply IHX.
+
+   (* fpreds *)
+   case f; intros.
+   Case "XFPred".
+   apply fpre.
+   apply IHX.
+Qed.
+
 
 (* ORIG *)
 (* Theorem exp_mutind *)

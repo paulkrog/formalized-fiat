@@ -7,10 +7,10 @@ Require Import FiatFormal.Language.SubstExpExp.
 (* When a well typed expression transitions to the next state
    then its type is preserved. *)
 Theorem preservation
- :  forall ds x x' t
- ,  TYPE ds nil x  t
- -> STEP x x'
- -> TYPE ds nil x' t.
+  : forall alg_ds adt_ds x x' t,
+    TYPE alg_ds adt_ds nil x  t
+ -> STEP adt_ds x x'
+ -> TYPE alg_ds adt_ds nil x' t.
 Proof.
 (*  intros ds x x' t HT HS. gen t. *)
 (*  induction HS; intros; inverts_type; eauto. *)
@@ -38,10 +38,10 @@ Admitted.
 (* When we multi-step evaluate some expression,
    then the result has the same type as the original. *)
 Lemma preservation_steps
- :  forall ds x1 t1 x2
- ,  TYPE ds nil x1 t1
- -> STEPS       x1 x2
- -> TYPE ds nil x2 t1.
+  : forall alg_ds adt_ds x1 t1 x2,
+    TYPE alg_ds adt_ds nil x1 t1
+    -> STEPS adt_ds       x1 x2
+    -> TYPE alg_ds adt_ds nil x2 t1.
 Proof.
 (*  intros ds x1 t1 x2 HT HS. *)
 (*  induction HS; eauto using preservation. *)
@@ -53,10 +53,10 @@ Admitted.
    Using the left-linearised form for the evaluation.
  *)
 Lemma preservation_stepsl
- :  forall ds x1 t1 x2
- ,  TYPE ds nil x1 t1
- -> STEPSL x1 x2
- -> TYPE ds nil x2 t1.
+  : forall alg_ds adt_ds x1 t1 x2,
+    TYPE alg_ds adt_ds nil x1 t1
+    -> STEPSL adt_ds x1 x2
+    -> TYPE alg_ds adt_ds nil x2 t1.
 Proof.
 (*  intros ds x1 t1 x2 HT HSL. *)
 (*  induction HSL; eauto using preservation. *)

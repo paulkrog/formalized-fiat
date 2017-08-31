@@ -56,7 +56,13 @@ Fixpoint
      binding depth by the number of arguments. *)
   |  AAlt dc ts x
   => AAlt dc ts (liftX n (d + length ts) x)
-  end.
+  end
+
+(* bogus *)
+ with liftF (n : nat) (d : nat) (f : fpred) {struct f} :=
+        match f with
+        | FPred pc x => FPred pc (liftX n d x)
+        end.
 
 
 (* The data constructor of an alternative is unchanged
@@ -77,8 +83,8 @@ Lemma liftX_zero
 Proof.
  intros. gen d.
  induction x using exp_mutind with
-  (PA := fun a => forall d
-      ,  liftA 0 d a = a);
+     (PA := fun a => forall d, liftA 0 d a = a)
+     (PF := fun f => forall d, liftF 0 d f = f);
   rip; simpl;
   try (solve [f_equal; rewritess; burn]).
 
@@ -95,10 +101,36 @@ Proof.
   rewrite (map_ext_in (liftA 0 d) id); auto.
   rewrite map_id. rewrite IHx; auto.
 
+  Case "XCall".
+  nforall.
+  rewrite (map_ext_in (liftX 0 d) id); auto.
+  rewrite map_id; auto.
+Qed.
+
+ (* intros. gen d. *)
+ (* induction x using exp_mutind with *)
+ (*  (PA := fun a => forall d *)
+ (*      ,  liftA 0 d a = a); *)
+ (*  rip; simpl; *)
+ (*  try (solve [f_equal; rewritess; burn]). *)
+
+ (* Case "XVar". *)
+ (*  lift_cases; burn. *)
+
+ (* Case "XCon". *)
+ (*  nforall. *)
+ (*  rewrite (map_ext_in (liftX 0 d) id); auto. *)
+ (*  rewrite map_id; auto. *)
+
+ (* Case "XMatch". *)
+ (*  nforall. *)
+ (*  rewrite (map_ext_in (liftA 0 d) id); auto. *)
+ (*  rewrite map_id. rewrite IHx; auto. *)
+
   (* Case "XChoice". *)
   (* rewrite (map_ext_in (liftX 0 d) id); auto. *)
   (* rewrite map_id; auto.  *)
-Qed.
+(* Qed. *)
 
 
 
@@ -110,10 +142,8 @@ Lemma liftX_comm
 Proof.
  intros. gen d.
  induction x using exp_mutind with
-  (PA := fun a => forall d
-      ,  liftA n d (liftA m d a)
-      =  liftA m d (liftA n d a));
-   rip; simpl;
+  (PA := fun a => forall d, liftA n d (liftA m d a) = liftA m d (liftA n d a))
+  (PF := fun a => forall d, liftF n d (liftF m d a) = liftF m d (liftF n d a));   rip; simpl;
    try (solve [f_equal; rewritess; burn]).
 
  Case "XVar".
@@ -136,7 +166,42 @@ Proof.
   rewrite (map_ext_in
    (fun a1 => liftA n d (liftA m d a1))
    (fun a1 => liftA m d (liftA n d a1))); burn.
+
+  Case "XCall".
+  f_equal.
+  rewrite map_map.
+  rewrite map_map.
+  nforall.
+  rewrite (map_ext_in
+             (fun x1 => liftX n d (liftX m d x1))
+             (fun x1 => liftX m d (liftX n d x1))); burn.
 Qed.
+(*  intros. gen d. *)
+(*  induction x using exp_mutind with *)
+(*   (PA := fun a => forall d, liftA n d (liftA m d a) = liftA m d (liftA n d a)); rip; simpl; *)
+(*    try (solve [f_equal; rewritess; burn]). *)
+
+(*  Case "XVar". *)
+(*   repeat (simpl; lift_cases; burn); *)
+(*    solve [f_equal; omega]. *)
+
+(*  Case "XCon". *)
+(*   f_equal. *)
+(*   repeat (rewrite map_map). *)
+(*   rewrite Forall_forall in *. *)
+(*   rewrite (map_ext_in *)
+(*    (fun x0 => liftX n d (liftX m d x0)) *)
+(*    (fun x0 => liftX m d (liftX n d x0))); burn. *)
+
+(*  Case "XMatch". *)
+(*   f_equal. burn. *)
+(*   rewrite map_map. *)
+(*   rewrite map_map. *)
+(*   rewrite Forall_forall in *. *)
+(*   rewrite (map_ext_in *)
+(*    (fun a1 => liftA n d (liftA m d a1)) *)
+(*    (fun a1 => liftA m d (liftA n d a1))); burn. *)
+(* Qed. *)
 
 
 (* When consecutively lifting an expression, we can lift by one
@@ -148,9 +213,10 @@ Lemma liftX_succ
 Proof.
  intros. gen d.
  induction x using exp_mutind with
-  (PA := fun a => forall d
-      ,  liftA (S n) d (liftA  m    d a)
-      =  liftA n     d (liftA (S m) d a));
+     (PA := fun a => forall d,  liftA (S n) d (liftA  m    d a)
+                 =  liftA n     d (liftA (S m) d a))
+     (PF := fun a => forall d,  liftF (S n) d (liftF  m    d a)
+                 =  liftF n     d (liftF (S m) d a));
   rip; simpl;
   try (solve [f_equal; rewritess; burn]).
 
@@ -173,7 +239,43 @@ Proof.
   rewrite (map_ext_in
    (fun x1 => liftA (S n) d (liftA m d x1))
    (fun x1 => liftA n d (liftA (S m) d x1))); burn.
+
+  Case "XCall".
+  f_equal.
+  repeat (rewrite map_map).
+  nforall.
+  rewrite (map_ext_in
+   (fun x1 => liftX (S n) d (liftX m d x1))
+   (fun x1 => liftX n d (liftX (S m) d x1))); burn.
 Qed.
+(*  intros. gen d. *)
+(*  induction x using exp_mutind with *)
+(*   (PA := fun a => forall d *)
+(*       ,  liftA (S n) d (liftA  m    d a) *)
+(*       =  liftA n     d (liftA (S m) d a)); *)
+(*   rip; simpl; *)
+(*   try (solve [f_equal; rewritess; burn]). *)
+
+(*  Case "XVar". *)
+(*   repeat (simple; lift_cases; intros); *)
+(*    try (solve [f_equal; omega]). *)
+
+(*  Case "XCon". *)
+(*   f_equal. *)
+(*   repeat (rewrite map_map). *)
+(*   rewrite Forall_forall in *. *)
+(*   rewrite (map_ext_in *)
+(*    (fun x0 => liftX (S n) d (liftX m d x0)) *)
+(*    (fun x0 => liftX n d (liftX (S m) d x0))); burn. *)
+
+(*  Case "XMatch". *)
+(*   f_equal. eauto. *)
+(*   repeat (rewrite map_map). *)
+(*   rewrite Forall_forall in *. *)
+(*   rewrite (map_ext_in *)
+(*    (fun x1 => liftA (S n) d (liftA m d x1)) *)
+(*    (fun x1 => liftA n d (liftA (S m) d x1))); burn. *)
+(* Qed. *)
 
 
 (* We can collapse two consecutive lifting expressions by lifting

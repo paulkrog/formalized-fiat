@@ -10,11 +10,11 @@ Require Export FiatFormal.Language.Exp.
    of the weaker (subst x2 x1) which assumes the substitution is taking
    place at top level. *)
 Theorem subst_exp_exp_ix
- :  forall ix ds te x1 x2 t1 t2
- ,  get  ix te = Some t2
- -> TYPE ds te           x1 t1
- -> TYPE ds (delete ix te) x2 t2
- -> TYPE ds (delete ix te) (substX ix x2 x1) t1.
+  :  forall ix alg_ds adt_ds te x1 x2 t1 t2,
+    get  ix te = Some t2
+    -> TYPE alg_ds adt_ds te           x1 t1
+    -> TYPE alg_ds adt_ds (delete ix te) x2 t2
+    -> TYPE alg_ds adt_ds (delete ix te) (substX ix x2 x1) t1.
 Proof.
 (*  intros. gen ix ds te x2 t1 t2. *)
 (*  induction x1 using exp_mutind with *)
@@ -143,10 +143,10 @@ Admitted.
 
 
 Theorem subst_exp_exp
- :  forall ds te x1 x2 t1 t2
- ,  TYPE ds (te :> t2) x1 t1
- -> TYPE ds te         x2 t2
- -> TYPE ds te (substX 0 x2 x1) t1.
+  :  forall alg_ds adt_ds te x1 x2 t1 t2,
+    TYPE alg_ds adt_ds (te :> t2) x1 t1
+    -> TYPE alg_ds adt_ds te x2 t2
+    -> TYPE alg_ds adt_ds te (substX 0 x2 x1) t1.
 Proof.
 (*  intros ds te x1 x2 t1 t2 Ht1 Ht2. *)
 (*  lets H: subst_exp_exp_ix 0 (te :> t2). *)
@@ -156,10 +156,10 @@ Admitted.
 
 (* Substitution of several expressions at once. *)
 Theorem subst_exp_exp_list
- :  forall ds te x1 xs t1 ts
- ,  Forall2 (TYPE ds te)         xs ts
- -> TYPE ds (te >< ts) x1 t1
- -> TYPE ds te    (substXs 0 xs x1) t1.
+  :  forall alg_ds adt_ds te x1 xs t1 ts,
+    Forall2 (TYPE alg_ds adt_ds te) xs ts
+    -> TYPE alg_ds adt_ds (te >< ts) x1 t1
+    -> TYPE alg_ds adt_ds te (substXs 0 xs x1) t1.
 Proof.
 (*  intros ds te x1 xs t1 ts HF HT. *)
 (*  gen ts x1. *)

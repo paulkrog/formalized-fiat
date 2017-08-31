@@ -10,48 +10,47 @@ Require Export FiatFormal.Language.Exp.
 (** The single step rules model the individual transitions that the
      machine can make at runtime. *)
 
-Inductive STEP : exp -> exp -> Prop :=
+Inductive STEP : adt_defs -> exp -> exp -> Prop :=
 
  (* Step some sub-expression in an evaluation context *)
  | EsContext
-   :  forall C x x'
-   ,  exp_ctx C
-   -> STEP x x'
-   -> STEP (C x) (C x')
+   :  forall adt_ds C x x',
+     exp_ctx C
+   -> STEP adt_ds x x'
+   -> STEP adt_ds (C x) (C x')
 
  | EsLamApp
-   : forall t11 x12 v2
-   ,  wnfX v2
-   -> STEP (XApp   (XLam t11 x12) v2)
+   : forall adt_ds t11 x12 v2,
+     wnfX v2
+   -> STEP adt_ds (XApp   (XLam t11 x12) v2)
           (substX 0 v2 x12)
 
  | EsFixApp
-   : forall t1 t2 x1 v1,
+   : forall adt_ds t1 t2 x1 v1,
      wnfX v1
-     -> STEP (XApp (XFix t1 t2 x1) v1)
+     -> STEP adt_ds (XApp (XFix t1 t2 x1) v1)
             (substX 0 (XFix t1 t2 x1) (substX 0 v1 x1))
  (* TODO: make sure this jibes with lift and subst definitions *)
 
  | EsMatchAlt
-   :  forall dc vs tsArgs alts x
-   ,  Forall wnfX vs
+   :  forall adt_ds dc vs tsArgs alts x,
+     Forall wnfX vs
    -> getAlt dc alts = Some (AAlt dc tsArgs x)
-   -> STEP (XMatch (XCon dc vs) alts)
+   -> STEP adt_ds (XMatch (XCon dc vs) alts)
           (substXs 0 vs x)
 
  | EsADTCall
-   : forall ds ac n vs x,
+   : forall adt_ds ac n vs x,
      Forall wnfX vs
-   -> getADTMethodBody ac n ds = Some x
-   -> STEP (XCall ac n vs) (substXs 0 vs x)
+   -> getADTBody ac n adt_ds = Some x
+   -> STEP adt_ds (XCall ac n vs) (substXs 0 vs x)
 
- (* | EsChoice *)
- (*   : forall t1 xs t11 pr fp, *)
- (*     fp = FiatPred t11 pr -> *)
- (*     exists xDenoted v1, wnfX v1 /\ pr t1 xDenoted *)
- (*                        -> STEP (XChoice t1 xs fp) v1 *)
-
-(* It seems that to fill in the blank above, I need function like "tyDenote", but for fiat expressions. *)
+ | EsChoice
+   : forall adt_ds t1 xs fp,
+     STEP adt_ds (XChoice t1 xs fp) (XChoice t1 xs fp)
+     (* fp = FiatPred t11 pr -> *)
+     (* exists xDenoted v1, wnfX v1 /\ pr t1 xDenoted *)
+     (*                    -> STEP (XChoice t1 xs fp) v1 *)
 .
 
 Hint Constructors STEP.
@@ -62,35 +61,35 @@ Hint Constructors STEP.
    As opposed to STEPSL, this version has an append constructor
    ESAppend that makes it easy to join two evaluations together.
    We use this when converting big-step evaluations to small-step. *)
-Inductive STEPS : exp -> exp -> Prop :=
+Inductive STEPS : adt_defs -> exp -> exp -> Prop :=
 
  (* After no steps, we get the same exp.
     We need this constructor to match the EVDone constructor
     in the big-step evaluation, so we can convert between big-step
     and multi-step evaluations. *)
  | EsNone
-   :  forall x1
-   ,  STEPS x1 x1
+   :  forall adt_ds x1,
+     STEPS adt_ds x1 x1
 
  (* Take a single step. *)
  | EsStep
-   :  forall x1 x2
-   ,  STEP  x1 x2
-   -> STEPS x1 x2
+   :  forall adt_ds x1 x2,
+     STEP adt_ds x1 x2
+   -> STEPS adt_ds x1 x2
 
  (* Combine two evaluations into a third. *)
  | EsAppend
-   :  forall x1 x2 x3
-   ,  STEPS x1 x2 -> STEPS x2 x3
-   -> STEPS x1 x3.
+   :  forall adt_ds x1 x2 x3,
+     STEPS adt_ds x1 x2 -> STEPS adt_ds x2 x3
+   -> STEPS adt_ds x1 x3.
 
 Hint Constructors STEPS.
 
 
 (* Stepping a wnf doesn't change it. *)
 Lemma step_wnfX
- :  forall x v
- ,  wnfX x -> STEP x v -> v = x.
+  : forall adt_ds x v,
+    wnfX x -> STEP adt_ds x v -> v = x.
 Proof.
 (*  intros x v HW HS. *)
 (*  induction HS; nope. *)
@@ -104,11 +103,13 @@ Proof.
 (* Qed. *)
 Admitted.
 
+(* TODO: rephrase lemmas below, they are missing adt_defs in STEP *)
+
 Lemma step_context_XCon_exists
- :  forall  C x dc
- ,  exps_ctx wnfX C
- -> (exists x', STEP x x')
- -> (exists x', STEP (XCon dc (C x)) (XCon dc (C x'))).
+  : forall adt_ds C x dc,
+    exps_ctx wnfX C
+    -> (exists x', STEP adt_ds x x')
+    -> (exists x', STEP adt_ds (XCon dc (C x)) (XCon dc (C x'))).
 Proof.
 (*  intros C x dc HC HS. *)
 (*  shift x'. *)
@@ -118,8 +119,8 @@ Admitted.
 
 (* Multi-step evaluating a wnf doesn't change it. *)
 Lemma steps_wnfX
- :  forall x v
- ,  wnfX x -> STEPS x v -> v = x.
+  : forall adt_ds x v,
+    wnfX x -> STEPS adt_ds x v -> v = x.
 Proof.
 (*  intros x v HW HS. *)
 (*  induction HS; burn. *)
@@ -133,10 +134,10 @@ Admitted.
 
 (* Multi-step evaluation in a context. *)
 Lemma steps_context
- :  forall C x1 x1'
- ,  exp_ctx C
- -> STEPS x1 x1'
- -> STEPS (C x1) (C x1').
+  : forall adt_ds C x1 x1',
+    exp_ctx C
+    -> STEPS adt_ds x1 x1'
+    -> STEPS adt_ds (C x1) (C x1').
 Proof.
 (*  intros C x1 x1' HC HS. *)
 (*  induction HS; eauto. *)
@@ -145,10 +146,10 @@ Admitted.
 
 (* Multi-step evaluation of a data constructor argument. *)
 Lemma steps_context_XCon
- :  forall C x v dc
- ,  exps_ctx wnfX C
- -> STEPS x v
- -> STEPS (XCon dc (C x)) (XCon dc (C v)).
+  : forall adt_ds C x v dc,
+    exps_ctx wnfX C
+    -> STEPS adt_ds x v
+    -> STEPS adt_ds (XCon dc (C x)) (XCon dc (C v)).
 Proof.
 (*  intros C x v dc HC HS. *)
 (*  induction HS; auto. *)
@@ -160,10 +161,10 @@ Proof.
 Admitted.
 
 Lemma steps_in_XCon
- :  forall xs vs dc
- ,  Forall2 STEPS xs vs
- -> Forall wnfX vs
- -> STEPS (XCon dc xs) (XCon dc vs).
+  : forall adt_ds xs vs dc,
+    Forall2 (STEPS adt_ds) xs vs
+    -> Forall wnfX vs
+    -> STEPS adt_ds (XCon dc xs) (XCon dc vs).
 Proof.
 (*  intros xs vs dc HS HW. *)
 (*  lets HC: make_chain HS HW. *)
@@ -180,17 +181,17 @@ Admitted.
 (* Left linearised multi-step evaluation
    As opposed to STEPS, this version provides a single step at a time
    and does not have an append constructor. This is convenient
-   when converting a small-step evaluations to big-step, via the
+   when converting small-step evaluations to big-step, via the
    eval_expansion lemma. *)
-Inductive STEPSL : exp -> exp -> Prop :=
+Inductive STEPSL : adt_defs -> exp -> exp -> Prop :=
  | EslNone
-   : forall x1
-   , STEPSL x1 x1
+   : forall adt_ds x1,
+     STEPSL adt_ds x1 x1
 
  | EslCons
-   :  forall x1 x2 x3
-   ,  STEP   x1 x2 -> STEPSL x2 x3
-   -> STEPSL x1 x3.
+   : forall adt_ds x1 x2 x3,
+     STEP adt_ds x1 x2 -> STEPSL adt_ds x2 x3
+   -> STEPSL adt_ds x1 x3.
 
 Hint Constructors STEPSL.
 
@@ -199,9 +200,9 @@ Hint Constructors STEPSL.
    We use this when "flattening" a big step evaluation to the
    small step one. *)
 Lemma stepsl_trans
- :  forall x1 x2 x3
- ,  STEPSL x1 x2 -> STEPSL x2 x3
- -> STEPSL x1 x3.
+  : forall adt_ds x1 x2 x3,
+    STEPSL adt_ds x1 x2 -> STEPSL adt_ds x2 x3
+ -> STEPSL adt_ds x1 x3.
 Proof.
 (*  intros x1 x2 x3 H1 H2. *)
 (*  induction H1; eauto. *)
@@ -212,9 +213,9 @@ Admitted.
    This flattens out all the append constructors, leaving us with
    a list of individual transitions. *)
 Lemma stepsl_of_steps
- :  forall x1 x2
- ,  STEPS  x1 x2
- -> STEPSL x1 x2.
+  : forall adt_ds x1 x2,
+    STEPS adt_ds x1 x2
+    -> STEPSL adt_ds x1 x2.
 Proof.
 (*  intros x1 x2 HS. *)
 (*  induction HS;  *)

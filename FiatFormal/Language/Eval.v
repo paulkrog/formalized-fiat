@@ -10,55 +10,63 @@ Require Import FiatFormal.Language.TyJudge.
    This is also called 'Natural Semantics'.
    It provides a relation between the expression to be reduced
    and its final value. *)
-Inductive EVAL : exp -> exp -> Prop :=
+Inductive EVAL : adt_defs -> exp -> exp -> Prop :=
  | EvDone
-   :  forall v2
-   ,  wnfX  v2
-   -> EVAL   v2 v2
+   : forall adt_ds v2,
+     wnfX  v2
+     -> EVAL adt_ds v2 v2
 
  | EvLamApp
-   :  forall x1 t11 x12 x2 v2 v3
-   ,  EVAL x1 (XLam t11 x12)
-   -> EVAL x2 v2
-   -> EVAL (substX 0 v2 x12) v3
-   -> EVAL (XApp x1 x2)      v3
+   :  forall adt_ds x1 t11 x12 x2 v2 v3,
+     EVAL adt_ds x1 (XLam t11 x12)
+     -> EVAL adt_ds x2 v2
+     -> EVAL adt_ds (substX 0 v2 x12) v3
+     -> EVAL adt_ds (XApp x1 x2)      v3
 
  | EvFixApp
-   : forall t1 t2 x0 x1 x2 v2 v3,
-     EVAL x0 (XFix t1 t2 x1)
-     -> EVAL x2 v2
-     -> EVAL (substX 0 (XFix t1 t2 x1) (substX 0 v2 x1)) v3
-     -> EVAL (XApp x0 x2) v3
+   : forall adt_ds t1 t2 x0 x1 x2 v2 v3,
+     EVAL adt_ds x0 (XFix t1 t2 x1)
+     -> EVAL adt_ds x2 v2
+     -> EVAL adt_ds (substX 0 (XFix t1 t2 x1) (substX 0 v2 x1)) v3
+     -> EVAL adt_ds (XApp x0 x2) v3
 
  | EvCon
-   :  forall dc xs vs
-   ,  EVALS xs vs
-   -> EVAL  (XCon dc xs) (XCon dc vs)
+   : forall adt_ds dc xs vs,
+     EVALS adt_ds xs vs
+     -> EVAL adt_ds (XCon dc xs) (XCon dc vs)
 
  | EvMatch
-   :  forall x1 x2 v3 dc vs alts tsArgs
-   ,  EVAL x1 (XCon dc vs)
-   -> Forall wnfX vs
-   -> getAlt dc alts = Some (AAlt dc tsArgs x2)
-   -> EVAL (substXs 0 vs x2) v3
-   -> EVAL (XMatch x1 alts)   v3
+   :  forall adt_ds x1 x2 v3 dc vs alts tsArgs,
+     EVAL adt_ds x1 (XCon dc vs)
+     -> Forall wnfX vs
+     -> getAlt dc alts = Some (AAlt dc tsArgs x2)
+     -> EVAL adt_ds (substXs 0 vs x2) v3
+     -> EVAL adt_ds (XMatch x1 alts)   v3
 
- (* | EvChoice *)
- (*   : forall x1 x2 v2 t1 t2 pr, *)
- (*     EVAL x1 (XChoice t1 t2 pr) *)
- (*     -> wnf v2 *)
- (*     -> pr v2 *)
- (*     -> EVAL x1 v2 *)
+ | EvChoice
+   : forall adt_ds x1 v2 t1 xs fp,
+     EVAL adt_ds x1 (XChoice t1 xs fp)
+     -> wnfX v2
+     (* -> fp v2 *) (* TODO *)
+     -> EVAL adt_ds x1 v2
 
- with EVALS : list exp -> list exp -> Prop :=
-  | EvsNil
-    :  EVALS nil nil
+ | EvCall
+   : forall adt_ds ac n xbody v1 xs vs,
+     EVALS adt_ds xs vs
+     -> Forall wnfX vs
+     -> getADTBody ac n adt_ds = Some xbody
+     -> EVAL adt_ds (substXs 0 vs xbody) v1
+     -> EVAL adt_ds (XCall ac n xs) v1
 
-  | EvsCons
-    :  forall x v xs vs
-    ,  EVAL  x  v
-    -> EVALS xs vs
-    -> EVALS (x :: xs) (v :: vs).
+ with EVALS : adt_defs -> list exp -> list exp -> Prop :=
+      | EvsNil : forall adt_ds,
+          EVALS adt_ds nil nil
+
+      | EvsCons
+        :  forall adt_ds x v xs vs,
+          EVAL adt_ds  x  v
+           -> EVALS adt_ds xs vs
+           -> EVALS adt_ds (x :: xs) (v :: vs).
 
 Hint Constructors EVAL.
 Hint Constructors EVALS.
@@ -74,47 +82,47 @@ Ltac inverts_eval :=
    end).
 
 
-Theorem EVAL_mutind
- :  forall (PE : exp      -> exp      -> Prop)
-           (PS : list exp -> list exp -> Prop)
+(* Theorem EVAL_mutind *)
+(*  :  forall (PE : exp      -> exp      -> Prop) *)
+(*            (PS : list exp -> list exp -> Prop) *)
 
- ,  (forall v2
-    ,  wnfX v2
-    -> PE v2 v2)
- -> (forall x1 t11 x12 x2 v2 v3
-    ,  EVAL x1 (XLam t11 x12)    -> PE x1 (XLam t11 x12)
-    -> EVAL x2 v2                -> PE x2 v2
-    -> EVAL (substX 0 v2 x12) v3 -> PE (substX 0 v2 x12) v3
-    -> PE (XApp x1 x2) v3)
- -> (forall x1 x11 t1 t2 x2 v2 v3,
-       EVAL x1 (XFix t1 t2 x11) -> PE x1 (XFix t1 t2 x11)
-       -> EVAL x2 v2 -> PE x2 v2
-       -> EVAL (substX 0 (XFix t1 t2 x11) (substX 0 v2 x11)) v3 -> PE (substX 0 (XFix t1 t2 x11) (substX 0 v2 x11)) v3
-       -> PE (XApp x1 x2) v3)
- -> (forall dc xs vs
-    ,  EVALS xs vs               -> PS xs vs
-    -> PE (XCon dc xs) (XCon dc vs))
- -> (forall x1 x2 v3 dc vs alts tsArgs
-    ,  EVAL x1 (XCon dc vs)      -> PE x1 (XCon dc vs)
-    -> Forall wnfX vs
-    -> getAlt dc alts = Some (AAlt dc tsArgs x2)
-    -> EVAL (substXs 0 vs x2) v3 -> PE (substXs 0 vs x2) v3
-    -> PE (XMatch x1 alts) v3)
- (* -> (forall t1 t2 x1 v1 x2 pr, *)
- (*       EVAL x1 (XChoice t1 t2 pr) -> PE x1 (XChoice t1 t2 pr) *)
- (*       -> wnf v1 *)
- (*       -> pr x2 *)
- (*   ) *)
+(*  ,  (forall v2 *)
+(*     ,  wnfX v2 *)
+(*     -> PE v2 v2) *)
+(*  -> (forall x1 t11 x12 x2 v2 v3 *)
+(*     ,  EVAL x1 (XLam t11 x12)    -> PE x1 (XLam t11 x12) *)
+(*     -> EVAL x2 v2                -> PE x2 v2 *)
+(*     -> EVAL (substX 0 v2 x12) v3 -> PE (substX 0 v2 x12) v3 *)
+(*     -> PE (XApp x1 x2) v3) *)
+(*  -> (forall x1 x11 t1 t2 x2 v2 v3, *)
+(*        EVAL x1 (XFix t1 t2 x11) -> PE x1 (XFix t1 t2 x11) *)
+(*        -> EVAL x2 v2 -> PE x2 v2 *)
+(*        -> EVAL (substX 0 (XFix t1 t2 x11) (substX 0 v2 x11)) v3 -> PE (substX 0 (XFix t1 t2 x11) (substX 0 v2 x11)) v3 *)
+(*        -> PE (XApp x1 x2) v3) *)
+(*  -> (forall dc xs vs *)
+(*     ,  EVALS xs vs               -> PS xs vs *)
+(*     -> PE (XCon dc xs) (XCon dc vs)) *)
+(*  -> (forall x1 x2 v3 dc vs alts tsArgs *)
+(*     ,  EVAL x1 (XCon dc vs)      -> PE x1 (XCon dc vs) *)
+(*     -> Forall wnfX vs *)
+(*     -> getAlt dc alts = Some (AAlt dc tsArgs x2) *)
+(*     -> EVAL (substXs 0 vs x2) v3 -> PE (substXs 0 vs x2) v3 *)
+(*     -> PE (XMatch x1 alts) v3) *)
+(*  (* -> (forall t1 t2 x1 v1 x2 pr, *) *)
+(*  (*       EVAL x1 (XChoice t1 t2 pr) -> PE x1 (XChoice t1 t2 pr) *) *)
+(*  (*       -> wnf v1 *) *)
+(*  (*       -> pr x2 *) *)
+(*  (*   ) *) *)
 
- -> (  PS nil nil)
- -> (forall x v xs vs
-    ,  EVAL x v                  -> PE x  v
-    -> EVALS xs vs               -> PS xs vs
-    -> PS (x :: xs) (v :: vs))
- -> forall x1 x2
- ,  EVAL x1 x2 -> PE x1 x2.
+(*  -> (  PS nil nil) *)
+(*  -> (forall x v xs vs *)
+(*     ,  EVAL x v                  -> PE x  v *)
+(*     -> EVALS xs vs               -> PS xs vs *)
+(*     -> PS (x :: xs) (v :: vs)) *)
+(*  -> forall x1 x2 *)
+(*  ,  EVAL x1 x2 -> PE x1 x2. *)
 
-Proof.
+(* Proof. *)
 (*  intros PE PS. *)
 (*  intros Hdone Hlam Hcon Hcase Hnil Hcons. *)
 (*  refine (fix  IHPE x  x'  (HE: EVAL  x  x')  {struct HE} *)
@@ -133,14 +141,14 @@ Proof.
 (*  eapply Hnil. *)
 (*  eapply Hcons; eauto. *)
 (* Qed. *)
-Admitted.
+(* Admitted. *)
 
 (* A terminating big-step evaluation always produces a whnf.
    The fact that the evaluation terminated is implied by the fact
    that we have a finite proof of EVAL to pass to this lemma. *)
 Lemma eval_produces_wnfX
- :  forall x1 v1
- ,  EVAL   x1 v1
+ :  forall adt_ds x1 v1
+ ,  EVAL adt_ds   x1 v1
  -> wnfX  v1.
 Proof.
 (*  intros. *)
@@ -155,8 +163,8 @@ Hint Resolve eval_produces_wnfX.
 
 
 Lemma evals_produces_wnfX
- :  forall xs vs
- ,  EVALS xs vs
+ :  forall adt_ds xs vs
+ ,  EVALS adt_ds xs vs
  -> Forall wnfX vs.
 Proof.
   (* intros. induction H; eauto. Qed. *)
@@ -168,10 +176,10 @@ Hint Resolve evals_produces_wnfX.
    Convert a big-step evaluation into a list of individual
    machine steps. *)
 Lemma steps_of_eval
- :  forall ds x1 t1 x2
- ,  TYPE ds nil x1 t1
- -> EVAL  x1 x2
- -> STEPS x1 x2.
+  : forall alg_ds adt_ds x1 t1 x2,
+    TYPE alg_ds adt_ds nil x1 t1
+    -> EVAL adt_ds x1 x2
+ -> STEPS adt_ds x1 x2.
 Proof.
 (*  intros ds x1 t1 v2 HT HE. gen t1. *)
 (*  induction HE using EVAL_mutind with *)
@@ -261,10 +269,10 @@ Admitted.
    that does an extra step before returning the original value.
  *)
 Lemma eval_expansion
- :  forall ds te x1 t1 x2 v3
- ,  TYPE ds te x1 t1
- -> STEP x1 x2 -> EVAL x2 v3
- -> EVAL x1 v3.
+  : forall alg_ds adt_ds te x1 t1 x2 v3,
+    TYPE alg_ds adt_ds te x1 t1
+ -> STEP adt_ds x1 x2 -> EVAL adt_ds x2 v3
+ -> EVAL adt_ds x1 v3.
 Proof.
 (*  intros ds te x1 t1 x2 v3 HT HS. gen ds te t1 v3. *)
 (*  induction HS; intros; *)
@@ -311,10 +319,10 @@ Admitted.
 
 (* Convert a list of small steps to a big-step evaluation. *)
 Lemma eval_of_stepsl
- :  forall ds x1 t1 v2
- ,  TYPE ds nil x1 t1
- -> STEPSL x1 v2 -> value v2
- -> EVAL   x1 v2.
+  : forall alg_ds adt_ds x1 t1 v2,
+    TYPE alg_ds adt_ds nil x1 t1
+    -> STEPSL adt_ds x1 v2 -> value v2
+    -> EVAL adt_ds   x1 v2.
 Proof.
 (*  intros. *)
 (*  induction H0. *)
@@ -333,10 +341,10 @@ Admitted.
    in the multi-step evaluation, leaving a list of individual
    small-steps. *)
 Lemma eval_of_steps
- :  forall ds x1 t1 v2
- ,  TYPE ds nil x1 t1
- -> STEPS x1 v2 -> value v2
- -> EVAL  x1 v2.
+  : forall alg_ds adt_ds x1 t1 v2,
+    TYPE alg_ds adt_ds nil x1 t1
+    -> STEPS adt_ds x1 v2 -> value v2
+    -> EVAL adt_ds  x1 v2.
 Proof.
 (*  intros. *)
 (*  eapply eval_of_stepsl; eauto. *)
