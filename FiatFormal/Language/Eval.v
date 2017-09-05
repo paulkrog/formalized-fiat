@@ -16,12 +16,12 @@ Inductive EVAL : adt_defs -> exp -> exp -> Prop :=
      wnfX  v2
      -> EVAL adt_ds v2 v2
 
- | EvLamApp
-   :  forall adt_ds x1 t11 x12 x2 v2 v3,
-     EVAL adt_ds x1 (XLam t11 x12)
-     -> EVAL adt_ds x2 v2
-     -> EVAL adt_ds (substX 0 v2 x12) v3
-     -> EVAL adt_ds (XApp x1 x2)      v3
+ (* | EvLamApp *)
+ (*   :  forall adt_ds x1 t11 x12 x2 v2 v3, *)
+ (*     EVAL adt_ds x1 (XLam t11 x12) *)
+ (*     -> EVAL adt_ds x2 v2 *)
+ (*     -> EVAL adt_ds (substX 0 v2 x12) v3 *)
+ (*     -> EVAL adt_ds (XApp x1 x2)      v3 *)
 
  | EvFixApp
    : forall adt_ds t1 t2 x0 x1 x2 v2 v3,

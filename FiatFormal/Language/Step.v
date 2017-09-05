@@ -19,11 +19,11 @@ Inductive STEP : adt_defs -> exp -> exp -> Prop :=
    -> STEP adt_ds x x'
    -> STEP adt_ds (C x) (C x')
 
- | EsLamApp
-   : forall adt_ds t11 x12 v2,
-     wnfX v2
-   -> STEP adt_ds (XApp   (XLam t11 x12) v2)
-          (substX 0 v2 x12)
+ (* | EsLamApp *)
+ (*   : forall adt_ds t11 x12 v2, *)
+ (*     wnfX v2 *)
+ (*   -> STEP adt_ds (XApp   (XLam t11 x12) v2) *)
+ (*          (substX 0 v2 x12) *)
 
  | EsFixApp
    : forall adt_ds t1 t2 x1 v1,
@@ -111,11 +111,22 @@ Lemma step_context_XCon_exists
     -> (exists x', STEP adt_ds x x')
     -> (exists x', STEP adt_ds (XCon dc (C x)) (XCon dc (C x'))).
 Proof.
-(*  intros C x dc HC HS. *)
-(*  shift x'. *)
-(*  eapply (EsContext (fun xx => XCon dc (C xx))); auto. *)
-(* Qed. *)
-Admitted.
+ intros adt_ds C x dc HC HS.
+ shift x'.
+ eapply (EsContext adt_ds (fun xx => XCon dc (C xx))); auto.
+Qed.
+
+Lemma step_context_XCall_exists_pmk
+  : forall adt_ds C x ac n,
+    exps_ctx wnfX C
+    -> (exists x', STEP adt_ds x x')
+    -> (exists x', STEP adt_ds (XCall ac n (C x)) (XCall ac n (C x'))).
+Proof.
+ intros adt_ds C x ac n HC HS.
+ shift x'.
+ eapply (EsContext adt_ds (fun xx => XCall ac n (C xx))); auto.
+Qed.
+
 
 (* Multi-step evaluating a wnf doesn't change it. *)
 Lemma steps_wnfX

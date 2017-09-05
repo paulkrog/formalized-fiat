@@ -29,8 +29,8 @@ Fixpoint
         else xx
 
     (* increase the depth as we move across a lambda *)
-    |  XLam t1 x1
-    => XLam t1 (liftX n (S d) x1)
+    (* |  XLam t1 x1 *)
+    (* => XLam t1 (liftX n (S d) x1) *)
     | XFix t1 t2 x1 => XFix t1 t2 (liftX n (S (S d)) x1)
 
     |  XApp x1 x2

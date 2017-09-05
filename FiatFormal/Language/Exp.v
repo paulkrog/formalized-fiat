@@ -11,9 +11,9 @@ Inductive wnfX : exp -> Prop :=
    : forall i
    , wnfX (XVar i)
 
- | Wnf_XLam
-   : forall t1 x2
-   , wnfX (XLam t1 x2)
+ (* | Wnf_XLam *)
+ (*   : forall t1 x2 *)
+ (*   , wnfX (XLam t1 x2) *)
 
  | Wnf_XFix
    : forall t1 t2 x1
@@ -33,14 +33,14 @@ Inductive wfX : tyenv -> exp -> Prop :=
    ,  (exists t, get i te = Some t)
    -> wfX te (XVar i)
 
- | WfX_XLam
-   :  forall te t x
-   ,  wfX (te :> t) x
-   -> wfX te (XLam t x)
+ (* | WfX_XLam *)
+ (*   :  forall te t x *)
+ (*   ,  wfX (te :> t) x *)
+ (*   -> wfX te (XLam t x) *)
 
  | WfX_XFix
    : forall te t1 t2 x1
-   , wfX (te :> t1 :> t2) x1
+   , wfX (te :> (TFun t1 t2) :> t1) x1
      -> wfX te (XFix t1 t2 x1) (* TODO *)
 
  | WfX_XApp
@@ -62,6 +62,7 @@ Inductive wfX : tyenv -> exp -> Prop :=
  | WfX_XChoice
    : forall te t1 xs fp,
      Forall (wfX te) xs
+     -> wfP te fp
      -> wfX te (XChoice t1 xs fp)
 
  | WfX_XCall
@@ -79,7 +80,12 @@ with    wfA : tyenv -> alt -> Prop :=
    :  forall te dc ds ts x tsArgs tResult
    ,  getDataDef dc ds = Some (DefData dc tsArgs tResult)
    -> wfX (te >< tsArgs) x
-   -> wfA te (AAlt dc ts x).
+   -> wfA te (AAlt dc ts x)
+
+with wfP : tyenv -> fpred -> Prop :=
+     | WfP_FPred
+       : forall pc x te,
+         wfP te (FPred pc x).
 
 Hint Constructors wfX.
 Hint Constructors wfA.

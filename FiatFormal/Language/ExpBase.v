@@ -1,5 +1,4 @@
 (* Thoughts/Qs: *)
-
 (*
    - how should I handle product types in ADT signatures? Define
       FiatProdType and use it
@@ -19,7 +18,7 @@ Inductive exp : Type :=
 
  (* Functions *)
  | XVar   : nat -> exp
- | XLam   : ty  -> exp -> exp
+ (* | XLam   : ty  -> exp -> exp *)
  | XFix : ty -> ty -> exp -> exp
  | XApp   : exp -> exp -> exp
 
@@ -139,20 +138,24 @@ Fixpoint getADTCons (ds : adt_defs) : list adtcon :=
 
 (* Inductively defined "has choice" predicate *)
 Inductive Xhas_choice : adt_defs -> exp -> Prop :=
-| HC_XLam : forall adt_ds t1 x1, Xhas_choice adt_ds x1 -> Xhas_choice adt_ds (XLam t1 x1)
+(* | HC_XLam : forall adt_ds t1 x1, Xhas_choice adt_ds x1 -> Xhas_choice adt_ds (XLam t1 x1) *)
 | HC_XFix : forall adt_ds t1 t2 x1, Xhas_choice adt_ds x1 -> Xhas_choice adt_ds (XFix t1 t2 x1)
 | HC_XApp1 : forall adt_ds x1 x2, Xhas_choice adt_ds x1 -> Xhas_choice adt_ds (XApp x1 x2)
 | HC_XApp2 : forall adt_ds x1 x2, Xhas_choice adt_ds x2 -> Xhas_choice adt_ds (XApp x1 x2)
 | HC_XCon : forall adt_ds dc le, Exists (Xhas_choice adt_ds) le -> Xhas_choice adt_ds (XCon dc le)
-| HC_XMatch : forall adt_ds x1 la, Exists (Ahas_choice adt_ds) la -> Xhas_choice adt_ds (XMatch x1 la)
+| HC_XMatchX : forall adt_ds x1 la, Xhas_choice adt_ds x1 -> Xhas_choice adt_ds (XMatch x1 la)
+| HC_XMatchA : forall adt_ds x1 la, Exists (Ahas_choice adt_ds) la -> Xhas_choice adt_ds (XMatch x1 la)
 | HC_XChoice : forall adt_ds t1 le fp, Xhas_choice adt_ds (XChoice t1 le fp)
-| HC_XCall : forall adt_ds ac n xs xbody,
+| HC_XCallArgs : forall adt_ds ac n xs, (* DONE: add constructor for case where choice is in method body *)
     Exists (Xhas_choice adt_ds) xs
-    -> getADTBody ac n adt_ds = Some xbody
+    -> Xhas_choice adt_ds (XCall ac n xs)
+| HC_XCallBody : forall adt_ds ac n xs xbody,
+    getADTBody ac n adt_ds = Some xbody
+    -> Xhas_choice adt_ds xbody
     -> Xhas_choice adt_ds (XCall ac n xs)
 with Ahas_choice : adt_defs -> alt -> Prop :=
      | HC_AAlt : forall adt_ds dc lt x1, Xhas_choice adt_ds x1 -> Ahas_choice adt_ds (AAlt dc lt x1).
-
+Hint Constructors Xhas_choice.
 
 (* TODO: change this *)
 (********************************************************************)
@@ -166,7 +169,7 @@ Theorem exp_mutind
     (PA : alt -> Prop)
     (PF : fpred -> Prop)
  ,  (forall n,                                PX (XVar n))
-    -> (forall t  x1,   PX x1                 -> PX (XLam t x1))
+    (* -> (forall t  x1,   PX x1                 -> PX (XLam t x1)) *)
     -> (forall t1 t2 x1, PX x1 -> PX (XFix t1 t2 x1))
  -> (forall x1 x2,   PX x1 -> PX x2        -> PX (XApp x1 x2))
  -> (forall dc xs,            Forall PX xs -> PX (XCon dc xs))
@@ -175,12 +178,13 @@ Theorem exp_mutind
 
  -> (forall t1 xs fp, PF fp -> Forall PX xs -> PX (XChoice t1 xs fp)) (* TODO *)
  -> (forall pc x, PX x -> PF (FPred pc x))
- -> (forall ac n xs,  Forall PX xs -> PX (XCall ac n xs)) (* TODO: I expect this to be not provable *)
+ -> (forall ac n xs,  Forall PX xs -> PX (XCall ac n xs)) (* TODO: I expect
+ -> this to be too weak *)
 
  ->  forall x, PX x.
 Proof.
  intros PX PA PF.
- intros var lam xfix app con xmatch alt choice fpre call.
+ intros var xfix app con xmatch alt choice fpre call.
  refine (fix  IHX x : PX x := _
            with IHA a : PA a := _
            with IHF f : PF f := _
@@ -192,9 +196,9 @@ Proof.
  Case "XVar".
   apply var.
 
- Case "XLam".
-  apply lam.
-   apply IHX.
+ (* Case "XLam". *)
+ (*  apply lam. *)
+ (*   apply IHX. *)
 
    Case "XFix".
    apply xfix.
@@ -288,3 +292,31 @@ Qed.
 (*   apply alt. *)
 (*    apply IHX. *)
 (* Qed. *)
+
+
+
+Lemma getADTSigInDefs_pmk : forall ac n adt_ds s d,
+    getADTSig ac n adt_ds = Some s
+    -> getADTDef ac adt_ds = Some d.
+Proof.
+  intros.
+  gen s n ac d.
+  induction adt_ds; intros; rip; burn.
+  - destruct ac. simpl in *; nope.
+  - destruct ac. simpl in H.
+Admitted.
+
+Lemma getADTSigInCons_pmk : forall ac n adt_ds s,
+    getADTSig ac n adt_ds = Some s
+    -> In ac (getADTCons adt_ds).
+Proof.
+  intros.
+  gen s n ac.
+  induction adt_ds; intros; rip; burn.
+  - destruct ac. simpl in *; nope.
+  - destruct ac. simpl in H.
+    destruct a. destruct a.
+    split_match; burn. simpl.
+    left. symmetry in HeqH0.
+    apply beq_nat_true in HeqH0; subst; auto.
+Qed.

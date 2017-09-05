@@ -266,3 +266,10 @@ Proof.
     exists x. exists y.
     repeat (split; auto).
 Qed.
+
+Lemma exps_In_C_pmk : forall A x P C,
+    exps_ctx P C -> @In A x (C x).
+Proof.
+  intros. gen x.
+  induction H; eauto.
+Qed.

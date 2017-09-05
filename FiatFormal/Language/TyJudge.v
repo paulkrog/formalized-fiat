@@ -10,10 +10,10 @@ Inductive TYPE : alg_defs -> adt_defs -> tyenv -> exp -> ty -> Prop :=
    -> TYPE alg_ds adt_ds te (XVar i) t
 
  (* Lambda Abstraction *)
- | TYLam
-   :  forall alg_ds adt_ds te x t1 t2,
-     TYPE alg_ds adt_ds (te :> t1) x            t2
-     -> TYPE alg_ds adt_ds te         (XLam t1 x) (TFun t1 t2)
+ (* | TYLam *)
+ (*   :  forall alg_ds adt_ds te x t1 t2, *)
+ (*     TYPE alg_ds adt_ds (te :> t1) x            t2 *)
+ (*     -> TYPE alg_ds adt_ds te         (XLam t1 x) (TFun t1 t2) *)
 
  | TYFix
    : forall alg_ds adt_ds te t1 t2 x1,
@@ -55,8 +55,9 @@ Inductive TYPE : alg_defs -> adt_defs -> tyenv -> exp -> ty -> Prop :=
    -> TYPE alg_ds adt_ds te (XMatch xObj alts) tResult
 
  | TYChoice
-   : forall alg_ds adt_ds t1 t2 xs te P,
+   : forall alg_ds adt_ds t1 t2 xs te P ts,
      TYPEP alg_ds adt_ds te P t2
+     -> Forall2 (TYPE alg_ds adt_ds te) xs ts
      -> TYPE alg_ds adt_ds te (XChoice t1 xs P) t1
 
  | TYCall
@@ -108,7 +109,7 @@ Ltac inverts_type :=
  repeat
   (match goal with
    | [ H: TYPE _ _ _ (XVar  _)    _    |- _ ] => inverts H
-   | [ H: TYPE _ _ _ (XLam  _ _)  _    |- _ ] => inverts H
+   (* | [ H: TYPE _ _ _ (XLam  _ _)  _    |- _ ] => inverts H *)
    | [ H: TYPE _ _ _ (XFix _ _ _)  _    |- _ ] => inverts H
    | [ H: TYPE _ _ _ (XApp  _ _)  _    |- _ ] => inverts H
    | [ H: TYPE _ _ _ (XCon  _ _)  _    |- _ ] => inverts H
@@ -117,6 +118,8 @@ Ltac inverts_type :=
    | [ H: TYPEA _ _ _ (AAlt _ _ _) _ _  |- _ ] => inverts H
    | [ H: TYPE _ _ _ (XCall _ _ _) _ |- _ ] => inverts H
    | [ H: TYPEP _ _ _ (FPred _ _) _ |- _ ] => inverts H
+   | [ H: WELL_TYPED_ADT _ _  _ |- _ ] => inverts H
+   | [ H: WELL_TYPED_ADTS _ _ |- _ ] => inverts H
    end).
 
 
@@ -124,17 +127,24 @@ Ltac inverts_type :=
 (* Forms of values.
    If we know the type of a value,
    then we know the form of that value. *)
-Lemma value_lam
- :  forall x alg_ds adt_ds te t1 t2
- ,  value x
- -> TYPE alg_ds adt_ds te x (TFun t1 t2)
- -> (exists t x', x = XLam t x') \/ (exists t1 t2 x', x = XFix t1 t2 x'). (* TODO *)
-Proof.
+(* Lemma value_lam *)
+(*  :  forall x alg_ds adt_ds te t1 t2 *)
+(*  ,  value x *)
+(*  -> TYPE alg_ds adt_ds te x (TFun t1 t2) *)
+(*  -> (exists t x', x = XLam t x') *)
+(* Proof. *)
 (*  intros. destruct x; burn. *)
 (* Qed. *)
-Admitted.
-Hint Resolve value_lam.
+(* Hint Resolve value_lam. *)
 
+Lemma value_fix
+  : forall x alg_ds adt_ds te t1 t2,
+    value x
+    -> TYPE alg_ds adt_ds te x (TFun t1 t2)
+    -> exists t1 t2 x', x = XFix t1 t2 x'.
+Proof.
+  intros. destruct x; burn.
+Qed.
 
 (********************************************************************)
 (* A well typed expression is well formed *)
@@ -143,22 +153,42 @@ Theorem type_wfX
     TYPE alg_ds adt_ds te x t
     -> wfX te x.
 Proof.
-(*  intros. gen ds te t. *)
-(*  induction x using exp_mutind with  *)
-(*   (PA := fun a => forall ds te t1 t2 *)
-(*       ,  TYPEA ds te a t1 t2  *)
-(*       -> wfA te a) *)
-(*   ; intros; inverts_type; eauto. *)
+ intros. gen alg_ds adt_ds te t.
+ induction x using exp_mutind with
+     (PA := fun a => forall alg_ds adt_ds te t1 t2,
+                TYPEA alg_ds adt_ds te a t1 t2
+                -> wfA te a)
+     (PF := fun f => forall alg_ds adt_ds te t1,
+                TYPEP alg_ds adt_ds te f t1
+                -> wfP te f)
+  ; intros; inverts_type; eauto.
 
-(*  Case "XCon". *)
-(*   apply WfX_XCon. repeat nforall. intros. *)
-(*   have HT: (exists t, TYPE ds te x t). *)
-(*   spec H H0 ds te. *)
-(*   destruct HT as [t]. *)
-(*   burn. *)
+ Case "XCon".
+  apply WfX_XCon. repeat nforall. intros.
+  have HT: (exists t, TYPE alg_ds adt_ds te x t).
+  spec H H0 alg_ds adt_ds te.
+  destruct HT as [t].
+  burn.
 
-(*  Case "XCase". *)
-(*   eapply WfX_XCase; repeat nforall; burn. *)
+ Case "XMatch".
+  eapply WfX_XMatch; repeat nforall; burn.
+
+  Case "XChoice".
+  apply WfX_XChoice.
+  repeat nforall; intros.
+  spec H H0 alg_ds adt_ds te.
+  pose proof (Forall2_exists_left (TYPE alg_ds adt_ds te)).
+  spec H1 H0 H9.
+  destruct H1 as [y]; burn.
+  eapply IHx; burn.
+  apply WfP_FPred.
+
+  Case "XCall".
+  repeat nforall.
+
+
+  (* apply (WfX_XCall adt_ds ). *)
+
 (* Qed. *)
 Admitted.
 Hint Resolve type_wfX.
@@ -245,4 +275,15 @@ Proof.
 (*  rewrite <- liftX_plus. *)
 (*  eapply type_tyenv_weaken1. auto.  *)
 (* Qed. *)
+Admitted.
+
+Lemma wellTypedCallHasBody_pmk : forall ac n alg_ds adt_ds te xs t,
+    TYPE alg_ds adt_ds te (XCall ac n xs) t ->
+    exists b, getADTBody ac n adt_ds = Some b.
+Proof.
+  intros.
+  inverts_type. nforall.
+  pose proof (getADTSigInCons_pmk _ _ _ _ H8).
+  spec H H0.
+  invert H; intros.
 Admitted.

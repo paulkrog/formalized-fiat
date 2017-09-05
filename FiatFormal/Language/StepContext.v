@@ -37,6 +37,12 @@ Inductive exp_ctx : (exp -> exp) -> Prop :=
  (* We need to reduce the discriminant of a case to a value. *)
  | XcMatch
    :  forall alts
-   ,  exp_ctx  (fun xx => XMatch xx alts).
+   ,  exp_ctx  (fun xx => XMatch xx alts)
+
+(* TODO: add for ADT calls *)
+ | XcCall
+   : forall ac n C,
+     exps_ctx wnfX C
+     -> exp_ctx (fun xs => XCall ac n (C xs)).
 
 Hint Constructors exp_ctx.

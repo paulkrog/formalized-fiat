@@ -27,8 +27,8 @@ Fixpoint
     (* Increase the depth as we move across a lambda.
        Also lift free references in the exp being substituted
        across the lambda as we enter it. *)
-    |  XLam t1 x2
-    => XLam t1 (substX (S d) (liftX 1 0 u) x2)
+    (* |  XLam t1 x2 *)
+    (* => XLam t1 (substX (S d) (liftX 1 0 u) x2) *)
     | XFix t1 t2 x1 => XFix t1 t2 (substX (S (S d)) (liftX 2 0 u) x1)
     (* Applications *)
     |  XApp x1 x2
