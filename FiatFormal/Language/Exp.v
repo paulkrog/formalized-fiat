@@ -77,10 +77,11 @@ Inductive wfX : tyenv -> exp -> Prop :=
 
 with    wfA : tyenv -> alt -> Prop :=
  | WfA_AAlt
-   :  forall te dc ds ts x tsArgs tResult
-   ,  getDataDef dc ds = Some (DefData dc tsArgs tResult)
-   -> wfX (te >< tsArgs) x
-   -> wfA te (AAlt dc ts x)
+   : forall te dc ds ts x tsArgs tResult,
+     getDataDef dc ds = Some (DefData dc tsArgs tResult)
+     -> wfX (te >< tsArgs) x
+     -> length ts = length tsArgs (* TODO: reconsider whether necessary *)
+     -> wfA te (AAlt dc ts x)
 
 with wfP : tyenv -> fpred -> Prop :=
      | WfP_FPred
@@ -132,3 +133,66 @@ Proof.
  intros. inverts H. inverts H1. auto.
 Qed.
 Hint Resolve value_closedXs_XCon.
+
+(* Invert all hypothesis that are compound well-formedness statements. *)
+Ltac inverts_wfX :=
+ repeat
+  (match goal with
+   | [ H: wfX _ (XVar  _)        |- _ ] => inverts H
+   (* | [ H: TYPE _ _ _ (XLam  _ _)  _    |- _ ] => inverts H *)
+   | [ H: wfX _ (XFix _ _ _)     |- _ ] => inverts H
+   | [ H: wfX _ (XApp  _ _)      |- _ ] => inverts H
+   | [ H: wfX _ (XCon  _ _)      |- _ ] => inverts H
+   | [ H: wfX _ (XMatch _ _)     |- _ ] => inverts H
+   | [ H: wfX _ (XChoice _ _ _)  |- _ ] => inverts H
+   | [ H: wfA _ (AAlt _ _ _)     |- _ ] => inverts H
+   | [ H: wfX _ (XCall _ _ _)    |- _ ] => inverts H
+   | [ H: wfP _ (FPred _ _)      |- _ ] => inverts H
+   end).
+
+(* Lemma liftX_closed_pmk *)
+(*   : forall x n te, *)
+(*     wfX te x -> (liftX n (length te) x) = x. *)
+(* Proof. *)
+(*   intros x n. *)
+(*   gen n. *)
+(*   induction x using exp_mutind with *)
+(*      (PA := fun a => forall n te, wfA te a -> (liftA n (length te) a) = a) *)
+(*      (PF := fun f => f = f); intros; rip; burn; subst. *)
+(*   inverts_wfX. dest t. *)
+(*   simpl. *)
+(*   fbreak_le_gt_dec; auto. *)
+(*   pose proof (get_above_false _ _ _ _ l H); nope. *)
+(*   inverts_wfX. *)
+(*   spec IHx H2. simpl in *; subst. *)
+(*   erewrite IHx; burn. *)
+(*   inverts_wfX; simpl. *)
+(*   spec IHx1 H3; spec IHx2 H4; espread; burn. *)
+(*   inverts_wfX; repeat nforall. *)
+(*   simpl. *)
+
+(*   assert (forall x, In x xs -> liftX n (length te) x = x). *)
+(*   intros. apply H. assumption. spec H3 H0. assumption. *)
+(*   pose proof (map_ext_in _ _ xs H0). *)
+(*   rewrite H1. *)
+(*   rewrite map_id; burn. *)
+
+(*   simpl. *)
+(*   inverts_wfX. *)
+(*   repeat nforall. *)
+
+(*   assert (forall a, In a aa -> liftA n (length te) a = a). *)
+(*   intros. apply H. assumption. spec H5 H0. assumption. *)
+(*   pose proof (map_ext_in _ _ aa H0). *)
+(*   rewrite H1. *)
+(*   rewrite map_id. *)
+(*   spec IHx H4. espread; burn. *)
+
+(*   simpl. *)
+(*   inverts_wfX. *)
+(*   assert (liftX n (length (te >< ts)) x = x). *)
+(*   eapply IHx. *)
+(*   pose proof (getAlt_ctorArgTypesMatchDataDef _ _ _ _). *)
+(*   eapply IHx. *)
+
+(*   Admitted. *)

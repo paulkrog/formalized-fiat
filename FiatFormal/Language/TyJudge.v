@@ -145,6 +145,7 @@ Lemma value_fix
 Proof.
   intros. destruct x; burn.
 Qed.
+Hint Resolve value_fix.
 
 (********************************************************************)
 (* A well typed expression is well formed *)

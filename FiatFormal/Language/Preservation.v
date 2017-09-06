@@ -12,6 +12,46 @@ Theorem preservation
  -> STEP adt_ds x x'
  -> TYPE alg_ds adt_ds nil x' t.
 Proof.
+ intros alg_ds adt_ds x x' t HT HS. gen t.
+ induction HS; intros; inverts_type; eauto.
+
+ (* Evaluation in an arbitrary context. *)
+ Case "EsContext".
+  destruct H; inverts_type; eauto.
+
+  SCase "XCon".
+   eapply TYCon; eauto.
+   eapply exps_ctx_Forall2_swap; eauto.
+  SCase "EsCall".
+  admit.
+
+ (* Case "EsLamApp". *)
+ (*  eapply subst_exp_exp; eauto. *)
+
+  Case "XFix".
+  repeat (eapply subst_exp_exp); eauto.
+  pose proof (type_tyenv_weaken1).
+  pose proof (H0 alg_ds adt_ds nil v1 t0 (TFun t0 t) H7).
+  pose proof (type_wfX _ _ _ _ _ H7).
+  pose proof (liftX_closed_pmk v1 1 nil H2); simpl in *. rewrite <- H3.
+  assumption.
+
+ Case "EsMatchAlt".
+  eapply subst_exp_exp_list; eauto.
+  eapply getAlt_bodyIsWellTyped_fromCase; eauto.
+  assert (tsArgs = tsArgs0).
+   lets D: getAlt_ctorArgTypesMatchDataDef H4 H7 H0. auto.
+   subst. auto.
+
+ Case "XCallBody".
+ repeat nforall.
+ inverts_type.
+
+ admit.
+
+(* Qed. *)
+Admitted.
+(* ORIG *)
 (*  intros ds x x' t HT HS. gen t. *)
 (*  induction HS; intros; inverts_type; eauto. *)
 
@@ -33,7 +73,7 @@ Proof.
 (*    lets D: getAlt_ctorArgTypesMatchDataDef H4 H7 H0. auto. *)
 (*    subst. auto. *)
 (* Qed. *)
-Admitted.
+
 
 (* When we multi-step evaluate some expression,
    then the result has the same type as the original. *)

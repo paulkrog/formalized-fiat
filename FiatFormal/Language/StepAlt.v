@@ -51,3 +51,60 @@ Proof.
 (*  inverts_type. rip. *)
 (* Qed. *)
 Admitted.
+
+Lemma liftX_closed_pmk
+  : forall x n te,
+    wfX te x -> (liftX n (length te) x) = x.
+Proof.
+  intros x n.
+  gen n.
+  induction x using exp_mutind with
+     (PA := fun a => forall n te, wfA te a -> (liftA n (length te) a) = a)
+     (PF := fun f => f = f); intros; rip; burn; subst.
+  inverts_wfX. dest t.
+  simpl.
+  fbreak_le_gt_dec; auto.
+  pose proof (get_above_false _ _ _ _ l H); nope.
+  inverts_wfX.
+  spec IHx H2. simpl in *; subst.
+  erewrite IHx; burn.
+  inverts_wfX; simpl.
+  spec IHx1 H3; spec IHx2 H4; espread; burn.
+  inverts_wfX; repeat nforall.
+  simpl.
+
+  assert (forall x, In x xs -> liftX n (length te) x = x).
+  intros. apply H. assumption. spec H3 H0. assumption.
+  pose proof (map_ext_in _ _ xs H0).
+  rewrite H1.
+  rewrite map_id; burn.
+
+  simpl.
+  inverts_wfX.
+  repeat nforall.
+
+  assert (forall a, In a aa -> liftA n (length te) a = a).
+  intros. apply H. assumption. spec H5 H0. assumption.
+  pose proof (map_ext_in _ _ aa H0).
+  rewrite H1.
+  rewrite map_id.
+  spec IHx H4. espread; burn.
+
+  inverts_wfX.
+  simpl.
+  inverts_wfX.
+  assert (liftX n (length (te >< tsArgs)) x = x).
+  eapply IHx.
+  assumption.
+  rewrite H6.
+  rewrite plus_comm. rewrite <- app_length.
+  rewrite H; burn.
+
+  inverts_wfX.
+  simpl. repeat nforall.
+  assert (forall x, In x xs -> liftX n0 (length te) x = x).
+  intros. apply H. assumption. spec H9 H0. assumption.
+  pose proof (map_ext_in _ _ xs H0).
+  rewrite H1.
+  rewrite map_id; burn.
+Qed.
