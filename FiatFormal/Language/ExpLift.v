@@ -43,8 +43,7 @@ Fixpoint
     (* lift all the alternatives in a case-expression *)
     |  XMatch x alts
     => XMatch (liftX n d x) (map (liftA n d) alts)
-    (* | XChoice t1 xs fp => XChoice t1 (map (liftX n d) xs) fp (* TODO *) *)
-    | XChoice t1 xs fp => XChoice t1 xs fp
+    | XChoice t1 xs fp => XChoice t1 xs fp (* TODO *)
     | XCall ac n' xs => XCall ac n' (map (liftX n d) xs)
     end
 

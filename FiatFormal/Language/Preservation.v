@@ -45,7 +45,8 @@ Proof.
 
  Case "XCallBody".
  repeat nforall.
- inverts_type.
+ eapply subst_exp_exp_list; eauto.
+ assert (XB: x = b); burn; subst.
 
  admit.
 

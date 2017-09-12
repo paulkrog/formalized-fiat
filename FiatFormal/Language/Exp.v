@@ -41,7 +41,7 @@ Inductive wfX : tyenv -> exp -> Prop :=
  | WfX_XFix
    : forall te t1 t2 x1
    , wfX (te :> (TFun t1 t2) :> t1) x1
-     -> wfX te (XFix t1 t2 x1) (* TODO *)
+     -> wfX te (XFix t1 t2 x1)
 
  | WfX_XApp
    :  forall te x1 x2
@@ -80,7 +80,8 @@ with    wfA : tyenv -> alt -> Prop :=
    : forall te dc ds ts x tsArgs tResult,
      getDataDef dc ds = Some (DefData dc tsArgs tResult)
      -> wfX (te >< tsArgs) x
-     -> length ts = length tsArgs (* TODO: reconsider whether necessary *)
+     -> length ts = length tsArgs (* TODO: consider whether *)
+                                (* necessary. needed in one of my lemmas  *)
      -> wfA te (AAlt dc ts x)
 
 with wfP : tyenv -> fpred -> Prop :=

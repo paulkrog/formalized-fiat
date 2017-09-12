@@ -178,3 +178,29 @@ Proof.
 (*   burn using type_tyenv_weaken_append. *)
 (* Qed. *)
 Admitted.
+
+(* Substitution of several expressions at once, ADT Method version. *)
+Theorem subst_exp_exp_list_ADT_pmk
+  :  forall alg_ds adt_ds te r s x1 xs,
+    Forall2 (TYPE alg_ds adt_ds te) xs (buildMethodTyEnv (TAdt s.(ac)) s)
+    -> TYPE_ADT_BODY alg_ds adt_ds te r s x1 s.(cod_opaque)
+    -> TYPE alg_ds adt_ds te (substXs 0 xs x1) s.(cod_opaque).
+Proof.
+(*  intros alg_ds adt_ds r s te x1 xs HF HTB. *)
+(*  gen x1 r. *)
+(*  induction xs; intros; inverts_type; simpl. *)
+
+(*  Case "base case". *)
+(*  admit. *)
+(*  (* destruct ts; burn. *) *)
+
+(*  Case "step case". *)
+(*   destruct ts; burn. *)
+(*   simpl in *. *)
+(*   inverts HF. *)
+(*   eapply IHxs. eauto. *)
+(*   eapply subst_exp_exp; eauto. *)
+(*   rrwrite (length xs = length ts). *)
+(*   burn using type_tyenv_weaken_append. *)
+(* (* Qed. *) *)
+Admitted.

@@ -59,9 +59,12 @@ Definition Rep   := ty.
 
 (* A Record for method signatures -- "Set" ok? *)
 Record Sig : Set := mkSig
-        {arity : nat;
-         dom : list ty;
-         cod : ty }.
+                      { ac : adtcon;
+                        arity : nat;
+                        dom : list ty;
+                        cod_opaque : ty;
+                        cod_clear : ty;
+                      }.
 
 Fixpoint buildTyList (n : nat) (t : ty) : list ty :=
   match n with

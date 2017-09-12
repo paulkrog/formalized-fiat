@@ -30,7 +30,6 @@ Inductive STEP : adt_defs -> exp -> exp -> Prop :=
      wnfX v1
      -> STEP adt_ds (XApp (XFix t1 t2 x1) v1)
             (substX 0 (XFix t1 t2 x1) (substX 0 v1 x1))
- (* TODO: make sure this jibes with lift and subst definitions *)
 
  | EsMatchAlt
    :  forall adt_ds dc vs tsArgs alts x,
@@ -103,7 +102,6 @@ Proof.
 (* Qed. *)
 Admitted.
 
-(* TODO: rephrase lemmas below, they are missing adt_defs in STEP *)
 
 Lemma step_context_XCon_exists
   : forall adt_ds C x dc,

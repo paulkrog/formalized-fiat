@@ -1,3 +1,17 @@
+(* TODO/NOTES
+
+Consider negative effects of adding typing rule for switching between
+opaque typing by TYPE and TYPE_ADT_BODY. Proofs break.
+
+The main reason for adding the new typing rule is to facilitate the
+needed subst_exp_exp_ADT_pmk proof in SubstExpExp.v
+
+Still not sure how (if at all) to represent product types
+
+*)
+
+
+
 
 Require Export FiatFormal.Language.Exp.
 
@@ -18,7 +32,6 @@ Inductive TYPE : alg_defs -> adt_defs -> tyenv -> exp -> ty -> Prop :=
  | TYFix
    : forall alg_ds adt_ds te t1 t2 x1,
      TYPE alg_ds adt_ds (te :> (TFun t1 t2) :> t1) x1 t2
-     (* TODO: reconsider after defining step relation for fix *)
      -> TYPE alg_ds adt_ds te (XFix t1 t2 x1) (TFun t1 t2)
 
  (* Applications *)
@@ -60,29 +73,33 @@ Inductive TYPE : alg_defs -> adt_defs -> tyenv -> exp -> ty -> Prop :=
      -> Forall2 (TYPE alg_ds adt_ds te) xs ts
      -> TYPE alg_ds adt_ds te (XChoice t1 xs P) t1
 
+ (* | TYCall *)
+ (*   : forall alg_ds adt_ds ac n te s b r xs, *)
+ (*     getADTSig ac n adt_ds = Some s *)
+ (*     -> getADTBody ac n adt_ds = Some b *)
+ (*     -> getADTRep ac adt_ds = Some r *)
+ (*     -> Forall2 (TYPE alg_ds adt_ds te) xs (buildMethodTyEnv (TAdt ac) s) *)
+ (*     -> TYPE alg_ds adt_ds (buildMethodTyEnv r s) b s.(cod) (* TRANSLUCENT *) *)
+ (*     -> TYPE alg_ds adt_ds te (XCall ac n xs) s.(cod)       (* OPAQUE *) *)
  | TYCall
-   : forall alg_ds adt_ds ac n te s xs,
-     (* check that all adts are well typed *)
-     WELL_TYPED_ADTS alg_ds adt_ds
-     -> getADTSig ac n adt_ds = Some s
-     -> Forall2 (TYPE alg_ds adt_ds te) xs (buildMethodTyEnv (TAdt ac) s) (* OPAQUE *)
-     -> TYPE alg_ds adt_ds te (XCall ac n xs) s.(cod)
+   : forall alg_ds adt_ds ac n te r s b xs,
+     getADTSig ac n adt_ds = Some s
+     -> getADTBody ac n adt_ds = Some b
+     -> getADTRep ac adt_ds = Some r
+     -> Forall2 (TYPE alg_ds adt_ds te) xs (buildMethodTyEnv (TAdt ac) s)
+     -> TYPE_ADT_BODY alg_ds adt_ds te r s b s.(cod_opaque) (* CONSIDER:
+ should this premise be "TYPE" rather than "TYPE_ADT_BODY" *)
+     -> TYPE alg_ds adt_ds te (XCall ac n xs) s.(cod_opaque)
 
-with WELL_TYPED_ADTS : alg_defs -> adt_defs -> Prop :=
-     (* TODO: consider whether or not a tyenv needed *)
-     | TYADTS : forall alg_ds adt_ds,
-         Forall (WELL_TYPED_ADT alg_ds adt_ds) (getADTCons adt_ds)
-         -> WELL_TYPED_ADTS alg_ds adt_ds
+ (* | TYOpaque (* TODO: discuss this with ben *) *)
+ (*   : forall alg_ds adt_ds r s body, *)
+ (*     TYPE_ADT_BODY alg_ds adt_ds r s body s.(cod_opaque) *)
+ (*     -> TYPE alg_ds adt_ds (buildMethodTyEnv (TAdt s.(ac)) s) body s.(cod_opaque) *)
 
-with WELL_TYPED_ADT : alg_defs -> adt_defs -> adtcon -> Prop :=
-     | TYADT : forall alg_ds adt_ds ac adt_d r ss xs,
-         getADTDef ac adt_ds = Some adt_d
-         -> getRep adt_d = r
-         -> getSigs adt_d = ss
-         -> getBodies adt_d = xs
-         (* ensure that cod = (FiatProdType)? *)
-         -> Forall3 (TYPE alg_ds adt_ds) (map (buildMethodTyEnv r) ss) xs (map cod ss) (* TODO: cod needs to reference Rep, not opaque type variable *)
-         -> WELL_TYPED_ADT alg_ds adt_ds ac
+with TYPE_ADT_BODY : alg_defs -> adt_defs -> tyenv -> Rep -> Sig -> exp -> ty -> Prop :=
+     | TYBody : forall alg_ds adt_ds te r s body,
+         TYPE alg_ds adt_ds (te >< (buildMethodTyEnv r s)) body s.(cod_clear)
+         -> TYPE_ADT_BODY alg_ds adt_ds te r s body s.(cod_opaque)
 
 with TYPEP : alg_defs -> adt_defs -> tyenv -> fpred -> ty -> Prop :=
      (* placeholder for predicate typing -- this is old *)
@@ -100,8 +117,6 @@ with TYPEA : alg_defs -> adt_defs -> tyenv -> alt -> ty -> ty -> Prop :=
 Hint Constructors TYPE.
 Hint Constructors TYPEA.
 Hint Constructors TYPEP.
-Hint Constructors WELL_TYPED_ADTS.
-Hint Constructors WELL_TYPED_ADT.
 
 
 (* Invert all hypothesis that are compound typing statements. *)
@@ -118,8 +133,7 @@ Ltac inverts_type :=
    | [ H: TYPEA _ _ _ (AAlt _ _ _) _ _  |- _ ] => inverts H
    | [ H: TYPE _ _ _ (XCall _ _ _) _ |- _ ] => inverts H
    | [ H: TYPEP _ _ _ (FPred _ _) _ |- _ ] => inverts H
-   | [ H: WELL_TYPED_ADT _ _  _ |- _ ] => inverts H
-   | [ H: WELL_TYPED_ADTS _ _ |- _ ] => inverts H
+   | [ H: TYPE_ADT_BODY _ _ _ _ _ _ _ |- _ ] => inverts H
    end).
 
 
@@ -144,7 +158,8 @@ Lemma value_fix
     -> exists t1 t2 x', x = XFix t1 t2 x'.
 Proof.
   intros. destruct x; burn.
-Qed.
+(* Qed. *)
+Admitted.
 Hint Resolve value_fix.
 
 (********************************************************************)
@@ -154,38 +169,39 @@ Theorem type_wfX
     TYPE alg_ds adt_ds te x t
     -> wfX te x.
 Proof.
- intros. gen alg_ds adt_ds te t.
- induction x using exp_mutind with
-     (PA := fun a => forall alg_ds adt_ds te t1 t2,
-                TYPEA alg_ds adt_ds te a t1 t2
-                -> wfA te a)
-     (PF := fun f => forall alg_ds adt_ds te t1,
-                TYPEP alg_ds adt_ds te f t1
-                -> wfP te f)
-  ; intros; inverts_type; eauto.
 
- Case "XCon".
-  apply WfX_XCon. repeat nforall. intros.
-  have HT: (exists t, TYPE alg_ds adt_ds te x t).
-  spec H H0 alg_ds adt_ds te.
-  destruct HT as [t].
-  burn.
+ (* intros. gen alg_ds adt_ds te t. *)
+ (* induction x using exp_mutind with *)
+ (*     (PA := fun a => forall alg_ds adt_ds te t1 t2, *)
+ (*                TYPEA alg_ds adt_ds te a t1 t2 *)
+ (*                -> wfA te a) *)
+ (*     (PF := fun f => forall alg_ds adt_ds te t1, *)
+ (*                TYPEP alg_ds adt_ds te f t1 *)
+ (*                -> wfP te f) *)
+ (*  ; intros; inverts_type; eauto. *)
 
- Case "XMatch".
-  eapply WfX_XMatch; repeat nforall; burn.
+ (* Case "XCon". *)
+ (*  apply WfX_XCon. repeat nforall. intros. *)
+ (*  have HT: (exists t, TYPE alg_ds adt_ds te x t). *)
+ (*  spec H H0 alg_ds adt_ds te. *)
+ (*  destruct HT as [t]. *)
+ (*  burn. *)
 
-  Case "XChoice".
-  apply WfX_XChoice.
-  repeat nforall; intros.
-  spec H H0 alg_ds adt_ds te.
-  pose proof (Forall2_exists_left (TYPE alg_ds adt_ds te)).
-  spec H1 H0 H9.
-  destruct H1 as [y]; burn.
-  eapply IHx; burn.
-  apply WfP_FPred.
+ (* Case "XMatch". *)
+ (*  eapply WfX_XMatch; repeat nforall; burn. *)
 
-  Case "XCall".
-  repeat nforall.
+ (*  Case "XChoice". *)
+ (*  apply WfX_XChoice. *)
+ (*  repeat nforall; intros. *)
+ (*  spec H H0 alg_ds adt_ds te. *)
+ (*  pose proof (Forall2_exists_left (TYPE alg_ds adt_ds te)). *)
+ (*  spec H1 H0 H9. *)
+ (*  destruct H1 as [y]; burn. *)
+ (*  eapply IHx; burn. *)
+ (*  apply WfP_FPred. *)
+
+ (*  Case "XCall". *)
+ (*  repeat nforall. *)
 
 
   (* apply (WfX_XCall adt_ds ). *)
@@ -282,9 +298,7 @@ Lemma wellTypedCallHasBody_pmk : forall ac n alg_ds adt_ds te xs t,
     TYPE alg_ds adt_ds te (XCall ac n xs) t ->
     exists b, getADTBody ac n adt_ds = Some b.
 Proof.
-  intros.
-  inverts_type. nforall.
-  pose proof (getADTSigInCons_pmk _ _ _ _ H8).
-  spec H H0.
-  invert H; intros.
+  (* intros. *)
+  (* inverts_type; burn. *)
 Admitted.
+(* Qed. *)
