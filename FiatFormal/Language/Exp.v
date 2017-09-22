@@ -15,6 +15,10 @@ Inductive wnfX : exp -> Prop :=
  (*   : forall t1 x2 *)
  (*   , wnfX (XLam t1 x2) *)
 
+ | Wnf_XNaryFun
+   : forall tsArgs x,
+     wnfX (XNaryFun tsArgs x)
+
  | Wnf_XFix
    : forall t1 t2 x1
    , wnfX (XFix t1 t2 x1)
@@ -22,26 +26,42 @@ Inductive wnfX : exp -> Prop :=
  | Wnf_XCon
    :  forall dc xs
    ,  Forall wnfX xs
-   -> wnfX (XCon dc xs).
+      -> wnfX (XCon dc xs)
+
+ | Wnf_XPair
+   : forall x1 x2,
+     wnfX x1
+     -> wnfX x2
+     -> wnfX (XPair x1 x2).
 Hint Constructors wnfX.
 
 
 (* Well formed expressions are closed under the given environment. *)
 Inductive wfX : tyenv -> exp -> Prop :=
+ | WfX_Let
+   : forall te ac n x,
+     wfX te x
+     -> wfX te (XLet ac n x)
+
  | WfX_XVar
    :  forall te i
    ,  (exists t, get i te = Some t)
    -> wfX te (XVar i)
 
- (* | WfX_XLam *)
- (*   :  forall te t x *)
- (*   ,  wfX (te :> t) x *)
- (*   -> wfX te (XLam t x) *)
-
  | WfX_XFix
    : forall te t1 t2 x1
    , wfX (te :> (TFun t1 t2) :> t1) x1
      -> wfX te (XFix t1 t2 x1)
+
+ | WfX_XNaryFun
+   : forall te tsArgs x,
+     wfX (te >< tsArgs) x
+     -> wfX te (XNaryFun tsArgs x)
+
+ | WfX_XNaryApp
+   : forall te x1 xs,
+     wfX te x1 -> Forall (wfX te) xs
+     -> wfX te (XNaryApp x1 xs)
 
  | WfX_XApp
    :  forall te x1 x2
@@ -65,15 +85,31 @@ Inductive wfX : tyenv -> exp -> Prop :=
      -> wfP te fp
      -> wfX te (XChoice t1 xs fp)
 
- | WfX_XCall
-   : forall adt_ds x s te ac n xs,
-     getADTBody ac n adt_ds  = Some x
-     -> getADTSig ac n adt_ds = Some s
-     (* Having appropriate size of tyenv all the matters here *)
-     -> wfX (buildMethodTyEnv (TAdt ac) s) x
-     -> length xs = s.(arity) + length(s.(dom))
-     -> Forall (wfX te) xs
-     -> wfX te (XCall ac n xs)
+ | WfX_XPair
+   : forall te x1 x2,
+     wfX te x1
+     -> wfX te x2
+     -> wfX te (XPair x1 x2)
+
+ | WfX_XFst
+   : forall te x1,
+     wfX te x1
+     -> wfX te (XFst x1)
+
+ | WfX_XSnd
+   : forall te x1,
+     wfX te x1
+     -> wfX te (XSnd x1)
+
+ (* | WfX_XOpCall *)
+ (*   : forall adt_ds x s te ac n xs, *)
+ (*     getADTBody ac n adt_ds  = Some x *)
+ (*     -> getADTSig ac n adt_ds = Some s *)
+ (*     (* Having appropriate size of tyenv all the matters here *) *)
+ (*     -> wfX nil x *)
+ (*     -> length xs = s.(arity) + length(s.(dom)) *)
+ (*     -> Forall (wfX te) xs *)
+ (*     -> wfX te (XOpCall ac n xs) *)
 
 with    wfA : tyenv -> alt -> Prop :=
  | WfA_AAlt
@@ -139,15 +175,18 @@ Hint Resolve value_closedXs_XCon.
 Ltac inverts_wfX :=
  repeat
   (match goal with
+   | [H: wfX _  (XLet _)         |- _ ] => inverts H
    | [ H: wfX _ (XVar  _)        |- _ ] => inverts H
-   (* | [ H: TYPE _ _ _ (XLam  _ _)  _    |- _ ] => inverts H *)
    | [ H: wfX _ (XFix _ _ _)     |- _ ] => inverts H
    | [ H: wfX _ (XApp  _ _)      |- _ ] => inverts H
    | [ H: wfX _ (XCon  _ _)      |- _ ] => inverts H
    | [ H: wfX _ (XMatch _ _)     |- _ ] => inverts H
    | [ H: wfX _ (XChoice _ _ _)  |- _ ] => inverts H
    | [ H: wfA _ (AAlt _ _ _)     |- _ ] => inverts H
-   | [ H: wfX _ (XCall _ _ _)    |- _ ] => inverts H
+   | [ H: wfX _ (XPair _ _)      |- _ ] => inverts H
+   | [ H: wfX _ (XFst _)         |- _ ] => inverts H
+   | [ H: wfX _ (XSnd _)         |- _ ] => inverts H
+   (* | [ H: wfX _ (XOpCall _ _ _)    |- _ ] => inverts H *)
    | [ H: wfP _ (FPred _ _)      |- _ ] => inverts H
    end).
 

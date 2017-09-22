@@ -48,7 +48,10 @@ Inductive ty : Type :=
  | TAdt   : adtcon -> ty
  | TPred  : predcon -> ty
 (* Build a function type *)
- | TFun   : ty    -> ty -> ty.
+ | TFun   : ty -> ty -> ty
+ | TNaryFun : list ty -> ty -> ty
+ | TProd    : ty -> ty -> ty
+ | TUnit    : ty.
 Hint Constructors ty.
 
 
@@ -62,39 +65,41 @@ Record Sig : Set := mkSig
                       { ac : adtcon;
                         arity : nat;
                         dom : list ty;
-                        cod_opaque : ty;
-                        cod_clear : ty;
+                        cod : ty;
                       }.
 
-Fixpoint buildTyList (n : nat) (t : ty) : list ty :=
+Fixpoint tyList (n : nat) (t : ty) : list ty :=
   match n with
   | O => nil
-  | S n' => (buildTyList n' t) :> t
+  | S n' => (tyList n' t) :> t
   end.
+
 Definition buildMethodTyEnv (r : ty) (s : Sig) : list ty :=
-  (buildTyList s.(arity) r) >< s.(dom).
-(* Definition buildMethodCodomainTy (r : ty) (s : Sig) : ty := .*)
+  (tyList s.(arity) r) >< s.(dom).
 
+Definition buildMethodTyList (r : ty) (s : Sig) : list ty :=
+  (tyList s.(arity) r) >< s.(dom) >< (s.(cod) :: nil).
 
+Fixpoint typeSubst (ac : adtcon) (s : ty) (t : ty) : ty :=
+  match t with
+  | TFun t1 t2 => TFun (typeSubst ac s t1) (typeSubst ac s t2)
+  | TNaryFun ts t2 => TNaryFun (map (typeSubst ac s) ts) (typeSubst ac s t2)
+  | TCon tc => TCon tc
+  | TPred pc => TPred pc
+  | TAdt ac' => if adtcon_beq ac ac'
+               then s
+               else TAdt ac'
+  | TProd t1 t2 => TProd (typeSubst ac s t1) (typeSubst ac s t2)
+  | TUnit => TUnit
+  end.
 
+Definition sigToNaryFunTy (r : ty) (s : Sig) : ty :=
+  TNaryFun ((tyList s.(arity) r) >< s.(dom)) s.(cod).
 
-(* Set Printing Projections. *)
-(* Print buildMethodTyEnv. *)
 
 (* Example: naming new algebraic data types *)
 Notation FiatUnitType := (TyConData 0).
 Notation FiatNatType := (TyConData 1).
 Notation FiatListType := (TyConData 2).
-Notation FiatProdType := (TyConData 3). (* TODO: use in signatures? *)
+Notation FiatProdType := (TyConData 3).
 Notation FiatProdData := (DataCon 0).
-
-(* (* function for replacing references to (TAdt (AdtCon n)) with Rep in a list of ty. *) *)
-(* (* used to type check method bodies *) *)
-(* Fixpoint replace_TAdt_by_Rep (x : ty) (ac : adtcon) (l : list ty) : list ty := *)
-(*   match l with *)
-(*   | nil => nil *)
-(*   | (TAdt ac') :: l' => if adtcon_beq ac ac' *)
-(*                        then x          :: (replace_TAdt_by_Rep x ac l') *)
-(*                        else (TAdt ac') :: (replace_TAdt_by_Rep x ac l') *)
-(*   | x' :: l' => x' :: (replace_TAdt_by_Rep x ac l') *)
-(*   end. *)

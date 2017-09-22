@@ -22,11 +22,14 @@ Proof.
   SCase "XCon".
    eapply TYCon; eauto.
    eapply exps_ctx_Forall2_swap; eauto.
-  SCase "EsCall".
+  SCase "EsOpCall".
   admit.
 
  (* Case "EsLamApp". *)
  (*  eapply subst_exp_exp; eauto. *)
+
+  Case "XLet".
+  inversion H9; subst.
 
   Case "XFix".
   repeat (eapply subst_exp_exp); eauto.

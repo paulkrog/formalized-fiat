@@ -9,7 +9,8 @@ Fixpoint
         (u:  exp) (* new expression to substitute *)
         (xx: exp) (* expression to substitute into *)
         : exp
- := match xx with
+  := match xx with
+    | XLet ac n x => XLet ac n (substX d u x)
     | XVar ix
     => match nat_compare ix d with
        (* Index matches the one we are substituting for. *)
@@ -30,7 +31,12 @@ Fixpoint
     (* |  XLam t1 x2 *)
     (* => XLam t1 (substX (S d) (liftX 1 0 u) x2) *)
     | XFix t1 t2 x1 => XFix t1 t2 (substX (S (S d)) (liftX 2 0 u) x1)
+
+    | XNaryFun tsArgs x => XNaryFun tsArgs (substX (d + length tsArgs) (liftX (length tsArgs) 0 u) x)
+    | XNaryApp x1 xs => XNaryApp (substX d u x1) (map (substX d u) xs)
+
     (* Applications *)
+
     |  XApp x1 x2
     => XApp (substX d u x1) (substX d u x2)
 
@@ -41,7 +47,10 @@ Fixpoint
     => XMatch (substX d u x) (map (substA d u) alts)
 
     | XChoice t1 t2 pr => XChoice t1 t2 pr (* TODO *)
-    | XCall ac n xs => XCall ac n (map (substX d u) xs)
+    | XPair x1 x2 => XPair (substX d u x1) (substX d u x2)
+    | XFst x1 => XFst (substX d u x1)
+    | XSnd x1 => XSnd (substX d u x1)
+    | XOpCall ac n xs => XOpCall ac n (map (substX d u) xs)
     end
 
 with substA (d: nat) (u: exp) (aa: alt)

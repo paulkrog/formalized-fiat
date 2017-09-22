@@ -1,17 +1,28 @@
 (* TODO/NOTES
 
-Consider negative effects of adding typing rule for switching between
-opaque typing by TYPE and TYPE_ADT_BODY. Proofs break.
+Switching order of forall binding changes typechecking result.
 
-The main reason for adding the new typing rule is to facilitate the
-needed subst_exp_exp_ADT_pmk proof in SubstExpExp.v
+This type checks:
 
-Still not sure how (if at all) to represent product types
+ | TYProg
+   : forall alg_ds adt_ds d ac pf te r x t,
+     TYPE alg_ds adt_ds te x t
+     -> getADTRep ac adt_ds d pf = r
+     -> TYPE_ADT alg_ds adt_ds ac
+     -> TYPE alg_ds adt_ds te x t
+     -> TYPE alg_ds adt_ds te (XLet ac x) (typeSubst ac r t)
+
+This does not:
+
+ | TYProg
+   : forall alg_ds adt_ds d pf ac te r x t,
+     TYPE alg_ds adt_ds te x t
+     -> getADTRep ac adt_ds d pf = r
+     -> TYPE_ADT alg_ds adt_ds ac
+     -> TYPE alg_ds adt_ds te x t
+     -> TYPE alg_ds adt_ds te (XLet ac x) (typeSubst ac r t)
 
 *)
-
-
-
 
 Require Export FiatFormal.Language.Exp.
 
@@ -22,12 +33,6 @@ Inductive TYPE : alg_defs -> adt_defs -> tyenv -> exp -> ty -> Prop :=
    :  forall alg_ds adt_ds te i t,
      get i te = Some t
    -> TYPE alg_ds adt_ds te (XVar i) t
-
- (* Lambda Abstraction *)
- (* | TYLam *)
- (*   :  forall alg_ds adt_ds te x t1 t2, *)
- (*     TYPE alg_ds adt_ds (te :> t1) x            t2 *)
- (*     -> TYPE alg_ds adt_ds te         (XLam t1 x) (TFun t1 t2) *)
 
  | TYFix
    : forall alg_ds adt_ds te t1 t2 x1,
@@ -40,6 +45,17 @@ Inductive TYPE : alg_defs -> adt_defs -> tyenv -> exp -> ty -> Prop :=
      TYPE alg_ds adt_ds te x1           (TFun t1 t2)
    -> TYPE alg_ds adt_ds te x2           t1
    -> TYPE alg_ds adt_ds te (XApp x1 x2) t2
+
+ | TYNaryFun
+   : forall alg_ds adt_ds te x tsArgs tResult,
+     TYPE alg_ds adt_ds (te >< tsArgs) x         tResult
+     -> TYPE alg_ds adt_ds te (XNaryFun tsArgs x) (TNaryFun tsArgs tResult)
+
+ | TYNaryApp
+   :  forall alg_ds adt_ds te x xs tsArgs t2,
+     TYPE alg_ds adt_ds te x           (TNaryFun tsArgs t2)
+   -> Forall2 (TYPE alg_ds adt_ds te) xs tsArgs
+   -> TYPE alg_ds adt_ds te (XNaryApp x xs) t2
 
  (* Data Constructors *)
  | TYCon
@@ -73,33 +89,45 @@ Inductive TYPE : alg_defs -> adt_defs -> tyenv -> exp -> ty -> Prop :=
      -> Forall2 (TYPE alg_ds adt_ds te) xs ts
      -> TYPE alg_ds adt_ds te (XChoice t1 xs P) t1
 
- (* | TYCall *)
- (*   : forall alg_ds adt_ds ac n te s b r xs, *)
- (*     getADTSig ac n adt_ds = Some s *)
- (*     -> getADTBody ac n adt_ds = Some b *)
- (*     -> getADTRep ac adt_ds = Some r *)
- (*     -> Forall2 (TYPE alg_ds adt_ds te) xs (buildMethodTyEnv (TAdt ac) s) *)
- (*     -> TYPE alg_ds adt_ds (buildMethodTyEnv r s) b s.(cod) (* TRANSLUCENT *) *)
- (*     -> TYPE alg_ds adt_ds te (XCall ac n xs) s.(cod)       (* OPAQUE *) *)
- | TYCall
-   : forall alg_ds adt_ds ac n te r s b xs,
+ | TYPair
+   : forall alg_ds adt_ds te t1 t2 x1 x2,
+     TYPE alg_ds adt_ds te x1 t1
+     -> TYPE alg_ds adt_ds te x2 t2
+     -> TYPE alg_ds adt_ds te (XPair x1 x2) (TProd t1 t2)
+
+ | TYFst
+   : forall alg_ds adt_ds te t1 t2 x,
+     TYPE alg_ds adt_ds te x (TProd t1 t2)
+     -> TYPE alg_ds adt_ds te (XFst x) t1
+
+ | TYSnd
+   : forall alg_ds adt_ds te t1 t2 x,
+     TYPE alg_ds adt_ds te x (TProd t1 t2)
+     -> TYPE alg_ds adt_ds te (XSnd x) t2
+
+ | TYOpCall
+   : forall alg_ds adt_ds ac n te r s xs tsArgs tResult,
      getADTSig ac n adt_ds = Some s
-     -> getADTBody ac n adt_ds = Some b
      -> getADTRep ac adt_ds = Some r
-     -> Forall2 (TYPE alg_ds adt_ds te) xs (buildMethodTyEnv (TAdt ac) s)
-     -> TYPE_ADT_BODY alg_ds adt_ds te r s b s.(cod_opaque) (* CONSIDER:
- should this premise be "TYPE" rather than "TYPE_ADT_BODY" *)
-     -> TYPE alg_ds adt_ds te (XCall ac n xs) s.(cod_opaque)
+     -> sigToNaryFunTy r s = TNaryFun tsArgs tResult
+     -> Forall2 (TYPE alg_ds adt_ds te) xs tsArgs
+     -> TYPE alg_ds adt_ds te (XOpCall ac n xs) tResult
 
- (* | TYOpaque (* TODO: discuss this with ben *) *)
- (*   : forall alg_ds adt_ds r s body, *)
- (*     TYPE_ADT_BODY alg_ds adt_ds r s body s.(cod_opaque) *)
- (*     -> TYPE alg_ds adt_ds (buildMethodTyEnv (TAdt s.(ac)) s) body s.(cod_opaque) *)
+ | TYProg
+   : forall alg_ds adt_ds ac n te r x t,
+     TYPE alg_ds adt_ds te x t
+     -> getADTRep ac adt_ds = Some r
+     -> TYPE_ADT alg_ds adt_ds ac
+     -> TYPE alg_ds adt_ds te x t
+     -> TYPE alg_ds adt_ds te (XLet ac n x) (typeSubst ac r t)
 
-with TYPE_ADT_BODY : alg_defs -> adt_defs -> tyenv -> Rep -> Sig -> exp -> ty -> Prop :=
-     | TYBody : forall alg_ds adt_ds te r s body,
-         TYPE alg_ds adt_ds (te >< (buildMethodTyEnv r s)) body s.(cod_clear)
-         -> TYPE_ADT_BODY alg_ds adt_ds te r s body s.(cod_opaque)
+with TYPE_ADT : alg_defs -> adt_defs -> adtcon -> Prop :=
+     | TYAdt : forall alg_ds adt_ds ac ss bs r,
+         getADTBodies ac adt_ds = Some bs
+         -> getADTSigs ac adt_ds = Some ss
+         -> getADTRep ac adt_ds = Some r
+         -> Forall2 (TYPE alg_ds adt_ds nil) bs (map (sigToNaryFunTy r) ss)
+         -> TYPE_ADT alg_ds adt_ds ac
 
 with TYPEP : alg_defs -> adt_defs -> tyenv -> fpred -> ty -> Prop :=
      (* placeholder for predicate typing -- this is old *)
@@ -126,14 +154,20 @@ Ltac inverts_type :=
    | [ H: TYPE _ _ _ (XVar  _)    _    |- _ ] => inverts H
    (* | [ H: TYPE _ _ _ (XLam  _ _)  _    |- _ ] => inverts H *)
    | [ H: TYPE _ _ _ (XFix _ _ _)  _    |- _ ] => inverts H
+   | [ H: TYPE _ _ _ (XNaryFun _ _)  _    |- _ ] => inverts H
+   | [ H: TYPE _ _ _ (XNaryApp _ _)  _    |- _ ] => inverts H
    | [ H: TYPE _ _ _ (XApp  _ _)  _    |- _ ] => inverts H
    | [ H: TYPE _ _ _ (XCon  _ _)  _    |- _ ] => inverts H
    | [ H: TYPE _ _ _ (XMatch _ _)  _    |- _ ] => inverts H
    | [ H: TYPE _ _ _ (XChoice _ _ _) _  |- _ ] => inverts H
    | [ H: TYPEA _ _ _ (AAlt _ _ _) _ _  |- _ ] => inverts H
-   | [ H: TYPE _ _ _ (XCall _ _ _) _ |- _ ] => inverts H
+   | [ H: TYPE _ _ _ (XPair _ _) _      |- _ ] => inverts H
+   | [ H: TYPE _ _ _ (XFst _) _         |- _ ] => inverts H
+   | [ H: TYPE _ _ _ (XSnd _) _         |- _ ] => inverts H
+   | [ H: TYPE _ _ _ (XOpCall _ _ _) _ |- _ ] => inverts H
    | [ H: TYPEP _ _ _ (FPred _ _) _ |- _ ] => inverts H
-   | [ H: TYPE_ADT_BODY _ _ _ _ _ _ _ |- _ ] => inverts H
+   | [ H: TYPE _ _ _ (XLet _ _ _) _ |- _ ] => inverts H
+   | [ H: TYPE_ADT _ _ _ _ |- _ ] => inverts H
    end).
 
 
@@ -294,11 +328,94 @@ Proof.
 (* Qed. *)
 Admitted.
 
-Lemma wellTypedCallHasBody_pmk : forall ac n alg_ds adt_ds te xs t,
-    TYPE alg_ds adt_ds te (XCall ac n xs) t ->
-    exists b, getADTBody ac n adt_ds = Some b.
+(* ---------------------------------------------------------- *)
+
+Definition buildNaryApp x xs :=
+  XNaryApp x xs.
+
+Lemma type_method_type_nary :
+  forall alg_ds adt_ds ac n te xs b tResult,
+    TYPE alg_ds adt_ds te (XOpCall ac n xs) tResult
+    -> getADTBody ac n adt_ds = Some b
+    -> TYPE_ADT alg_ds adt_ds ac
+    -> TYPE alg_ds adt_ds te (buildNaryApp b xs) tResult.
 Proof.
+  intros. unfold buildNaryApp.
+  eapply TYNaryApp.
+  inversion H; subst.
+  inversion H1; subst.
+  rewrite H9 in H4. norm_inverts_option.
+Admitted.
+
+Lemma adt_x_in_xs :
+  forall ac n adt_ds b bs,
+    getADTBody ac n adt_ds = Some b
+    -> getADTBodies ac adt_ds = Some bs
+    -> In b bs.
+Proof.
+  intros. unfold getADTBody, getADTBodies in *.
+  induction bs.
+Admitted.
+
+(* Lemma wellTypedCallHasBody_pmk : forall ac n alg_ds adt_ds te xs t, *)
+(*     TYPE alg_ds adt_ds te (XOpCall ac n xs) t -> *)
+(*     exists b, getADTBody ac n adt_ds = Some b. *)
+(* Proof. *)
   (* intros. *)
   (* inverts_type; burn. *)
-Admitted.
+(* Admitted. *)
 (* Qed. *)
+
+
+Fixpoint methodSubstX ac n s x : exp :=
+  match x with
+  | XOpCall ac' n' xs => if andb (adtcon_beq ac ac') (beq_nat n n')
+                        then (buildNaryApp s xs)
+                        else XOpCall ac' n' (map (methodSubstX ac n s) xs)
+  | XLet ac' n' x' => XLet ac' n' (methodSubstX ac n s x')
+  | XNaryFun tsArgs x' => XNaryFun tsArgs (methodSubstX ac n s x')
+  | XNaryApp x' xs => XNaryApp (methodSubstX ac n s x') (map (methodSubstX ac n s) xs)
+  | XFix t1 t2 x' => XFix t1 t2 (methodSubstX ac n s x')
+  | XApp x1 x2 => XApp (methodSubstX ac n s x1) (methodSubstX ac n s x2)
+  | XVar n => XVar n
+  | XCon dc xs => XCon dc (map (methodSubstX ac n s) xs)
+  | XMatch x' aa => XMatch (methodSubstX ac n s x') (map (methodSubstA ac n s) aa)
+  | XChoice t1 xs fp => XChoice t1 xs fp (* TODO *)
+  | XPair x1 x2 => XPair (methodSubstX ac n s x1) (methodSubstX ac n s x2)
+  | XFst x' => XFst (methodSubstX ac n s x')
+  | XSnd x' => XSnd (methodSubstX ac n s x')
+  end
+with methodSubstA ac n s a : alt :=
+       match a with
+       | AAlt dc ts x
+         => AAlt dc ts (methodSubstX ac n s x)
+       end.
+
+(* Fixpoint methodSubstX ac n adt_ds b d pf (pre : getADTBody ac n adt_ds d pf = Some b) (x : exp) : exp := *)
+(*   match x with *)
+(*   | XOpCall ac' n' xs => if andb (adtcon_beq ac ac') (beq_nat n n') *)
+(*                         then (buildNaryApp b xs) *)
+(*                         else XOpCall ac' n' (map (methodSubstX ac n adt_ds b pre) xs) *)
+(*   | XLet ac' x' => XLet ac (methodSubstX ac n adt_ds b pre x') *)
+(*   | XNaryFun tsArgs x' => XNaryFun tsArgs (methodSubstX ac n adt_ds b pre x') *)
+(*   | XNaryApp x' xs => XNaryApp (methodSubstX ac n adt_ds b pre x') (map (methodSubstX ac n adt_ds b pre) xs) *)
+(*   | XFix t1 t2 x' => XFix t1 t2 (methodSubstX ac n adt_ds b pre x') *)
+(*   | XApp x1 x2 => XApp (methodSubstX ac n adt_ds b pre x1) (methodSubstX ac n adt_ds b pre x2) *)
+(*   | XVar n => XVar n *)
+(*   | XCon dc xs => XCon dc (map (methodSubstX ac n adt_ds b pre) xs) *)
+(*   | XMatch x' aa => XMatch (methodSubstX ac n adt_ds b pre x') (map (methodSubstA ac n adt_ds b pre) aa) *)
+(*   | XChoice t1 xs fp => XChoice t1 xs fp (* TODO *) *)
+(*   | XPair x1 x2 => XPair (methodSubstX ac n adt_ds b pre x1) (methodSubstX ac n adt_ds b pre x2) *)
+(*   | XFst x' => XFst (methodSubstX ac n adt_ds b pre x') *)
+(*   | XSnd x' => XSnd (methodSubstX ac n adt_ds b pre x') *)
+(*   end *)
+
+(* with methodSubstA ac n adt_ds b d pf (pre : getADTBody ac n adt_ds d pf = Some b) (a : alt) : alt := *)
+(*        match a with *)
+(*        | AAlt dc ts x *)
+(*          => AAlt dc ts (methodSubstX ac n adt_ds b pre x) *)
+(*        end. *)
+
+(* Fixpoint methodsToFunctions (ac : adtcon) (adt_ds : adt_defs) (d : adt_def) (pre : getADTDef ac adt_ds = Some d) (x : exp) : exp := *)
+(*   match pre with *)
+(*   | _ => *)

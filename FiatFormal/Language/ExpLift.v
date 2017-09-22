@@ -21,6 +21,7 @@ Fixpoint
         {struct xx}
         : exp
  := match xx with
+    | XLet ac n' x => XLet ac n' (liftX n d x)
     |  XVar ix
     => if le_gt_dec d ix
         (* index was pointing into env, lift it across new elems *)
@@ -28,10 +29,10 @@ Fixpoint
         (* index was locally bound, leave it be *)
         else xx
 
-    (* increase the depth as we move across a lambda *)
-    (* |  XLam t1 x1 *)
-    (* => XLam t1 (liftX n (S d) x1) *)
     | XFix t1 t2 x1 => XFix t1 t2 (liftX n (S (S d)) x1)
+
+    | XNaryFun tsArgs x => XNaryFun tsArgs (liftX n (d + (length tsArgs)) x)
+    | XNaryApp x1 xs => XNaryApp (liftX n d x1) (map (liftX n d) xs)
 
     |  XApp x1 x2
     => XApp   (liftX n d x1) (liftX n d x2)
@@ -44,7 +45,10 @@ Fixpoint
     |  XMatch x alts
     => XMatch (liftX n d x) (map (liftA n d) alts)
     | XChoice t1 xs fp => XChoice t1 xs fp (* TODO *)
-    | XCall ac n' xs => XCall ac n' (map (liftX n d) xs)
+    | XPair x1 x2 => XPair (liftX n d x1) (liftX n d x2)
+    | XFst x1 => XFst (liftX n d x1)
+    | XSnd x1 => XSnd (liftX n d x1)
+    | XOpCall ac n' xs => XOpCall ac n' (map (liftX n d) xs)
     end
 
  with liftA (n: nat) (d: nat) (aa: alt) {struct aa}:=
@@ -100,7 +104,7 @@ Proof.
   rewrite (map_ext_in (liftA 0 d) id); auto.
   rewrite map_id. rewrite IHx; auto.
 
-  Case "XCall".
+  Case "XOpCall".
   nforall.
   rewrite (map_ext_in (liftX 0 d) id); auto.
   rewrite map_id; auto.
@@ -166,7 +170,7 @@ Proof.
    (fun a1 => liftA n d (liftA m d a1))
    (fun a1 => liftA m d (liftA n d a1))); burn.
 
-  Case "XCall".
+  Case "XOpCall".
   f_equal.
   rewrite map_map.
   rewrite map_map.
@@ -239,7 +243,7 @@ Proof.
    (fun x1 => liftA (S n) d (liftA m d x1))
    (fun x1 => liftA n d (liftA (S m) d x1))); burn.
 
-  Case "XCall".
+  Case "XOpCall".
   f_equal.
   repeat (rewrite map_map).
   nforall.

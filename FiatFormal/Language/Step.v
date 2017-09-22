@@ -19,11 +19,10 @@ Inductive STEP : adt_defs -> exp -> exp -> Prop :=
    -> STEP adt_ds x x'
    -> STEP adt_ds (C x) (C x')
 
- (* | EsLamApp *)
- (*   : forall adt_ds t11 x12 v2, *)
- (*     wnfX v2 *)
- (*   -> STEP adt_ds (XApp   (XLam t11 x12) v2) *)
- (*          (substX 0 v2 x12) *)
+ | EsLet
+   : forall adt_ds ac n  b x,
+     getADTBody ac n adt_ds = Some b
+     -> STEP adt_ds (XLet ac n x) (methodSubstX ac n b x) (* previously needed to subst all methods here *)
 
  | EsFixApp
    : forall adt_ds t1 t2 x1 v1,
@@ -38,11 +37,23 @@ Inductive STEP : adt_defs -> exp -> exp -> Prop :=
    -> STEP adt_ds (XMatch (XCon dc vs) alts)
           (substXs 0 vs x)
 
- | EsADTCall
-   : forall adt_ds ac n vs x,
-     Forall wnfX vs
-   -> getADTBody ac n adt_ds = Some x
-   -> STEP adt_ds (XCall ac n vs) (substXs 0 vs x)
+ | EsPairFst
+   : forall adt_ds v1 v2,
+     wnfX v1
+     -> wnfX v2
+     -> STEP adt_ds (XFst (XPair v1 v2)) v1
+
+ | EsPairSnd
+   : forall adt_ds v1 v2,
+     wnfX v1
+     -> wnfX v2
+     -> STEP adt_ds (XSnd (XPair v1 v2)) v2
+
+ (* | EsADTCall *)
+ (*   : forall adt_ds ac n vs x, *)
+ (*     Forall wnfX vs *)
+ (*   -> getADTBody ac n adt_ds = Some x *)
+ (*   -> STEP adt_ds (XCall ac n vs) (substXs 0 vs x) *)
 
  | EsChoice
    : forall adt_ds t1 xs fp,
@@ -118,11 +129,11 @@ Lemma step_context_XCall_exists_pmk
   : forall adt_ds C x ac n,
     exps_ctx wnfX C
     -> (exists x', STEP adt_ds x x')
-    -> (exists x', STEP adt_ds (XCall ac n (C x)) (XCall ac n (C x'))).
+    -> (exists x', STEP adt_ds (XOpCall ac n (C x)) (XOpCall ac n (C x'))).
 Proof.
  intros adt_ds C x ac n HC HS.
  shift x'.
- eapply (EsContext adt_ds (fun xx => XCall ac n (C xx))); auto.
+ eapply (EsContext adt_ds (fun xx => XOpCall ac n (C xx))); auto.
 Qed.
 
 

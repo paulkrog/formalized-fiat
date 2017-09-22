@@ -39,9 +39,24 @@ Inductive exp_ctx : (exp -> exp) -> Prop :=
    :  forall alts
    ,  exp_ctx  (fun xx => XMatch xx alts)
 
+ | XcPair1
+   : forall x2,
+     exp_ctx (fun xx => XPair xx x2)
+
+ | XcPair2
+   : forall v1,
+     value v1
+     -> exp_ctx (fun xx => XPair v1 xx)
+
+ | XcFst
+   : exp_ctx (fun xx => XFst xx)
+
+ | XcSnd
+   : exp_ctx (fun xx => XSnd xx)
+
  | XcCall
    : forall ac n C,
      exps_ctx wnfX C
-     -> exp_ctx (fun xs => XCall ac n (C xs)).
+     -> exp_ctx (fun xs => XOpCall ac n (C xs)).
 
 Hint Constructors exp_ctx.

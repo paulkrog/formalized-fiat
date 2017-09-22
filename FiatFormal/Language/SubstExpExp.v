@@ -180,12 +180,12 @@ Proof.
 Admitted.
 
 (* Substitution of several expressions at once, ADT Method version. *)
-Theorem subst_exp_exp_list_ADT_pmk
-  :  forall alg_ds adt_ds te r s x1 xs,
-    Forall2 (TYPE alg_ds adt_ds te) xs (buildMethodTyEnv (TAdt s.(ac)) s)
-    -> TYPE_ADT_BODY alg_ds adt_ds te r s x1 s.(cod_opaque)
-    -> TYPE alg_ds adt_ds te (substXs 0 xs x1) s.(cod_opaque).
-Proof.
+(* Theorem subst_exp_exp_list_ADT_pmk *)
+(*   :  forall alg_ds adt_ds te , *)
+(*     Forall2 (TYPE alg_ds adt_ds te) xs (buildMethodTyEnv (TAdt s.(ac)) s) *)
+(*     -> TYPE_ADT alg_ds adt_ds ac *)
+(*     -> TYPE alg_ds adt_ds te (substXs 0 xs x1) s.(cod). *)
+(* Proof. *)
 (*  intros alg_ds adt_ds r s te x1 xs HF HTB. *)
 (*  gen x1 r. *)
 (*  induction xs; intros; inverts_type; simpl. *)
@@ -203,4 +203,4 @@ Proof.
 (*   rrwrite (length xs = length ts). *)
 (*   burn using type_tyenv_weaken_append. *)
 (* (* Qed. *) *)
-Admitted.
+(* Admitted. *)
