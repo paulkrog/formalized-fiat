@@ -114,7 +114,6 @@ VFILES:=FiatFormal/Language/Base.v\
   FiatFormal/Language/SubstTypeType.v\
   FiatFormal/Language/TyEnv.v\
   FiatFormal/Language/TyJudge.v\
-  FiatFormal/Language/Ty.v\
   FiatFormal/Data/Bool.v\
   FiatFormal/Data/Chain.v\
   FiatFormal/Data/Context.v\

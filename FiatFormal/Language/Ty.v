@@ -1,105 +1,216 @@
-Require Export FiatFormal.Language.Base.
+
+Require Export FiatFormal.Language.Ki.
 
 
-(* Naming algebraic data types *)
-Inductive tycon : Type :=
- | TyConData   : nat -> tycon.
-Hint Constructors tycon.
+(* Type Expressions *)
+Inductive ty  : Type :=
+ | TCon    : nat -> ty            (* Data type constructor. *)
+ | TVar    : nat -> ty            (* deBruijn index. *)
+ | TForall : ty  -> ty            (* Type variable binding. *)
+ | TFun    : ty  -> ty -> ty.     (* Function type constructor. *)
 
-(* Naming constructors for algebraic data types *)
-Inductive datacon : Type :=
- | DataCon    : nat -> datacon.
-Hint Constructors datacon.
-
-(* Naming abstract data types *)
-Inductive adtcon : Type :=
-| AdtCon : nat -> adtcon.
-Hint Constructors adtcon.
-
-(* Naming predicate types *)
-Inductive predcon : Type :=
-| PredCon : nat -> predcon.
-Hint Constructors predcon.
-
-(* Functions for testing equality of these "names" *)
-Fixpoint tycon_beq t1 t2 :=
-  match t1, t2 with
-  | TyConData n1, TyConData n2 => beq_nat n1 n2
-  end.
-Fixpoint datacon_beq t1 t2 :=
-  match t1, t2 with
-  | DataCon n1, DataCon n2 => beq_nat n1 n2
-  end.
-Fixpoint adtcon_beq t1 t2 :=
-  match t1, t2 with
-  | AdtCon n1, AdtCon n2 => beq_nat n1 n2
-  end.
-Fixpoint predcon_beq t1 t2 :=
-  match t1, t2 with
-  | PredCon n1, PredCon n2 => beq_nat n1 n2
-  end.
-
-
-(* Embedded Fiat Type *)
-Inductive ty : Type :=
-(* Build each of first three types by
-   supplying an appropriate "name" *)
- | TCon   : tycon -> ty
- | TAdt   : adtcon -> ty
- | TPred  : predcon -> ty
-(* Build a function type *)
- | TFun   : ty -> ty -> ty
- | TNaryFun : list ty -> ty -> ty
- | TProd    : ty -> ty -> ty
- | TUnit    : ty.
 Hint Constructors ty.
 
 
-(* Type Environment *)
-Definition tyenv := list ty.
-(* Helpful alias -- should Rep be restricted to algebraic data types? *)
-Definition Rep   := ty.
+(********************************************************************)
+(* Well formed types are closed under the given kind environment *)
+Fixpoint wfT (ke: kienv) (tt: ty) : Prop :=
+ match tt with
+ | TCon _     => True
+ | TVar i     => exists k, get i ke = Some k
+ | TForall t  => wfT (ke :> KStar) t
+ | TFun t1 t2 => wfT ke t1 /\ wfT ke t2
+ end.
+Hint Unfold wfT.
 
-(* A Record for method signatures -- "Set" ok? *)
-Record Sig : Set := mkSig
-                      { ac : adtcon;
-                        arity : nat;
-                        dom : list ty;
-                        cod : ty;
-                      }.
 
-Fixpoint tyList (n : nat) (t : ty) : list ty :=
-  match n with
-  | O => nil
-  | S n' => (tyList n' t) :> t
+(* A closed type is well formed under an empty type environment. *)
+Definition closedT (tt: ty) : Prop
+ := wfT nil tt.
+Hint Unfold closedT.
+
+
+(********************************************************************)
+(* Lifting of type indices in types.
+   When we push new elements on the environment stack, we need
+   to lift referenes to existing elements across the new ones. *)
+Fixpoint liftTT (d: nat) (tt: ty) : ty :=
+  match tt with
+  | TCon _     => tt
+
+  |  TVar ix
+  => if le_gt_dec d ix
+      then TVar (S ix)
+      else tt
+
+  |  TForall t
+  => TForall (liftTT (S d) t)
+
+  |  TFun t1 t2
+  => TFun    (liftTT d t1) (liftTT d t2)
+  end.
+Hint Unfold liftTT.
+
+
+(* Tactic to help deal with lifting functions. *)
+Ltac lift_cases
+ := match goal with
+     |  [ |- context [le_gt_dec ?n ?n'] ]
+     => case (le_gt_dec n n')
+    end.
+
+
+(********************************************************************)
+(* Substitution for the outer-most binder in a type. *)
+Fixpoint substTT (d: nat) (u: ty) (tt: ty) : ty
+ := match tt with
+    |  TCon _
+    => tt
+
+    | TVar ix
+    => match nat_compare ix d with
+       | Eq => u
+       | Gt => TVar (ix - 1)
+       | _  => TVar  ix
+       end
+
+    |  TForall t
+    => TForall (substTT (S d) (liftTT 0 u) t)
+
+    |  TFun t1 t2
+    => TFun (substTT d u t1) (substTT d u t2)
   end.
 
-Definition buildMethodTyEnv (r : ty) (s : Sig) : list ty :=
-  (tyList s.(arity) r) >< s.(dom).
 
-Definition buildMethodTyList (r : ty) (s : Sig) : list ty :=
-  (tyList s.(arity) r) >< s.(dom) >< (s.(cod) :: nil).
+(********************************************************************)
+(* Changing the order of lifting. *)
+Lemma liftTT_liftTT
+ :  forall n n' t
+ ,  liftTT n              (liftTT (n + n') t)
+ =  liftTT (1 + (n + n')) (liftTT n t).
+Proof.
+ intros. gen n n'.
+ induction t; intros; auto.
 
-Fixpoint typeSubst (ac : adtcon) (s : ty) (t : ty) : ty :=
-  match t with
-  | TFun t1 t2 => TFun (typeSubst ac s t1) (typeSubst ac s t2)
-  | TNaryFun ts t2 => TNaryFun (map (typeSubst ac s) ts) (typeSubst ac s t2)
-  | TCon tc => TCon tc
-  | TPred pc => TPred pc
-  | TAdt ac' => if adtcon_beq ac ac'
-               then s
-               else TAdt ac'
-  | TProd t1 t2 => TProd (typeSubst ac s t1) (typeSubst ac s t2)
-  | TUnit => TUnit
-  end.
+ Case "TVar".
+  simpl.
+  repeat (unfold liftTT; lift_cases; intros); burn.
 
-Definition sigToNaryFunTy (r : ty) (s : Sig) : ty :=
-  TNaryFun ((tyList s.(arity) r) >< s.(dom)) s.(cod).
+ Case "TForall".
+  simpl.
+  assert (S (n + n') = (S n) + n'). omega. rewrite H.
+  rewrite IHt. auto.
+
+ Case "TFun".
+  simpl. apply f_equal2; auto.
+Qed.
 
 
-(* Example: naming new algebraic data types *)
-Notation FiatUnitType := (TyConData 0).
-Notation FiatNatType := (TyConData 1).
-Notation FiatListType := (TyConData 2).
-Notation FiatProdType := (TyConData 3).
-Notation FiatProdData := (DataCon 0).
+(* Lifting then substituting at the same index doesn't do anything.
+
+   When we lift indices in a type that are greater or equal to some
+   depth d, there will be no indices of value d in the result. The
+   lifting process increments indices greater than 'd', but then the
+   substitution process decrements them again, so we get back to
+   the type we started with.
+ *)
+Lemma substTT_liftTT
+ :  forall d t1 t2
+ ,  substTT d t2 (liftTT d t1) = t1.
+Proof.
+ intros. gen d t2.
+ induction t1; intros; eauto.
+
+ Case "TVar".
+  simpl; lift_cases; unfold substTT;
+   fbreak_nat_compare; intros;
+   burn.
+
+ Case "TForall".
+  simpl.
+  rewrite IHt1. auto.
+
+ Case "TFun".
+  simpl.
+  rewrite IHt1_1.
+  rewrite IHt1_2. auto.
+Qed.
+
+
+(* Lifting after substitution *)
+Lemma liftTT_substTT
+ :  forall n n' t1 t2
+ ,  liftTT n (substTT (n + n') t2 t1)
+ =  substTT (1 + n + n') (liftTT n t2) (liftTT n t1).
+Proof.
+ intros. gen n n' t2.
+ induction t1; intros; eauto.
+
+ Case "TVar".
+  repeat (simpl; fbreak_nat_compare;
+          try lift_cases; try intros);
+   burn.
+
+ Case "TForall".
+  simpl.
+  rewrite (IHt1 (S n) n'). simpl.
+  rewrite (liftTT_liftTT 0 n). auto.
+
+ Case "TFun".
+  simpl.
+  rewrite IHt1_1. auto.
+  rewrite IHt1_2. auto.
+Qed.
+
+
+(* Lifting after substitution, another way. *)
+Lemma liftTT_substTT'
+ :  forall n n' t1 t2
+ ,  liftTT (n + n') (substTT n t2 t1)
+ =  substTT n (liftTT (n + n') t2) (liftTT (1 + n + n') t1).
+Proof.
+ intros. gen n n' t2.
+ induction t1; intros; auto.
+
+ Case "TVar".
+  repeat ( unfold liftTT; unfold substTT; fold liftTT; fold substTT
+         ; try lift_cases; try fbreak_nat_compare
+         ; intros); burn.
+
+ Case "TForall".
+  simpl. f_equal.
+  rewrite (IHt1 (S n) n'). f_equal.
+   simpl. rewrite (liftTT_liftTT 0 (n + n')). auto.
+
+ Case "TFun".
+  simpl. f_equal.
+   apply IHt1_1.
+   apply IHt1_2.
+Qed.
+
+
+(* Commuting substitutions. *)
+Lemma substTT_substTT
+ :  forall n m t1 t2 t3
+ ,  substTT (n + m) t3 (substTT n t2 t1)
+ =  substTT n (substTT (n + m) t3 t2)
+              (substTT (1 + n + m) (liftTT n t3) t1).
+Proof.
+ intros. gen n m t2 t3.
+ induction t1; intros; auto.
+
+ Case "TVar".
+  repeat (simpl; fbreak_nat_compare); try burn.
+  rewrite substTT_liftTT. auto.
+
+ Case "TForall".
+  simpl. f_equal.
+  rewrite (IHt1 (S n) m). f_equal.
+   simpl. rewrite (liftTT_substTT 0 (n + m)). auto.
+   simpl. rewrite (liftTT_liftTT 0 n). auto.
+
+ Case "TFun".
+  simpl. f_equal.
+   apply IHt1_1.
+   apply IHt1_2.
+Qed.
