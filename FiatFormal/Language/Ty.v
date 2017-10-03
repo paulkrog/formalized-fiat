@@ -4,10 +4,15 @@ Require Export FiatFormal.Language.Ki.
 
 (* Type Expressions *)
 Inductive ty  : Type :=
- | TCon    : nat -> ty            (* Data type constructor. *)
- | TVar    : nat -> ty            (* deBruijn index. *)
- | TForall : ty  -> ty            (* Type variable binding. *)
- | TFun    : ty  -> ty -> ty.     (* Function type constructor. *)
+ | TCon    : nat -> ty             (* Data type constructor. *)
+ | TVar    : nat -> ty             (* deBruijn index. *)
+ | TForall : ty  -> ty           (* Type variable binding. *)
+ | TFun    : ty  -> ty -> ty     (* Function type constructor. *)
+
+ | TExists : ty -> ty.
+ (* | TNProd   : list ty -> ty *)
+ (* | TNFun    : list ty -> ty -> ty *)
+ (* | TExists  : ty -> ty. *)
 
 Hint Constructors ty.
 
@@ -20,6 +25,11 @@ Fixpoint wfT (ke: kienv) (tt: ty) : Prop :=
  | TVar i     => exists k, get i ke = Some k
  | TForall t  => wfT (ke :> KStar) t
  | TFun t1 t2 => wfT ke t1 /\ wfT ke t2
+
+ (* | TNProd ts      => True *)
+ (* | TNFun  ts tRes => Forall (wfT ke) ts /\ wfT ke tRes *)
+ (* | TNFun ts tRes => wfT ke tRes *)
+ | TExists t     => wfT (ke :> KStar) t
  end.
 Hint Unfold wfT.
 
@@ -36,18 +46,21 @@ Hint Unfold closedT.
    to lift referenes to existing elements across the new ones. *)
 Fixpoint liftTT (d: nat) (tt: ty) : ty :=
   match tt with
-  | TCon _     => tt
+  |  TCon _     => tt
 
   |  TVar ix
-  => if le_gt_dec d ix
-      then TVar (S ix)
-      else tt
+     => if le_gt_dec d ix
+       then TVar (S ix)
+       else tt
 
   |  TForall t
-  => TForall (liftTT (S d) t)
+     => TForall (liftTT (S d) t)
 
   |  TFun t1 t2
-  => TFun    (liftTT d t1) (liftTT d t2)
+     => TFun    (liftTT d t1) (liftTT d t2)
+
+  |  TExists t
+     => TExists (liftTT (S d) t)
   end.
 Hint Unfold liftTT.
 
@@ -78,7 +91,10 @@ Fixpoint substTT (d: nat) (u: ty) (tt: ty) : ty
     => TForall (substTT (S d) (liftTT 0 u) t)
 
     |  TFun t1 t2
-    => TFun (substTT d u t1) (substTT d u t2)
+       => TFun (substTT d u t1) (substTT d u t2)
+
+    |  TExists t
+       => TExists (substTT (S d) (liftTT 0 u) t)
   end.
 
 
@@ -102,7 +118,12 @@ Proof.
   rewrite IHt. auto.
 
  Case "TFun".
-  simpl. apply f_equal2; auto.
+ simpl. apply f_equal2; auto.
+
+ Case "TExists".
+ simpl.
+ assert (S (n + n') = (S n) + n'). omega. rewrite H.
+ rewrite IHt. auto.
 Qed.
 
 
@@ -134,6 +155,10 @@ Proof.
   simpl.
   rewrite IHt1_1.
   rewrite IHt1_2. auto.
+
+  Case "TExists".
+  simpl.
+  rewrite IHt1. auto.
 Qed.
 
 
@@ -160,6 +185,11 @@ Proof.
   simpl.
   rewrite IHt1_1. auto.
   rewrite IHt1_2. auto.
+
+  Case "TExists".
+  simpl.
+  rewrite (IHt1 (S n) n'). simpl.
+  rewrite (liftTT_liftTT 0 n). auto.
 Qed.
 
 
@@ -186,6 +216,11 @@ Proof.
   simpl. f_equal.
    apply IHt1_1.
    apply IHt1_2.
+
+   Case "TExists".
+   simpl. f_equal.
+   rewrite (IHt1 (S n) n'). f_equal.
+   simpl. rewrite (liftTT_liftTT 0 (n + n')). auto.
 Qed.
 
 
@@ -213,4 +248,10 @@ Proof.
   simpl. f_equal.
    apply IHt1_1.
    apply IHt1_2.
+
+   Case "TExists".
+   simpl. f_equal.
+   rewrite (IHt1 (S n) m). f_equal.
+   simpl. rewrite (liftTT_substTT 0 (n + m)). auto.
+   simpl. rewrite (liftTT_liftTT 0 n). auto.
 Qed.

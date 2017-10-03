@@ -29,7 +29,12 @@ Inductive KIND : kienv -> ty -> ki -> Prop :=
    :  forall ke t1 t2
    ,  KIND ke t1 KStar
    -> KIND ke t2 KStar
-   -> KIND ke (TFun t1 t2) KStar.
+   -> KIND ke (TFun t1 t2) KStar
+
+ | KIExists
+   : forall ke t,
+     KIND (ke :> KStar) t KStar
+     -> KIND ke (TExists t) KStar.
 
 Hint Constructors KIND.
 
@@ -73,6 +78,11 @@ Proof.
 
  Case "TForall".
   apply KIForall.
+  rewrite insert_rewind.
+  apply IHt. auto.
+
+  Case "TExists".
+  apply KIExists.
   rewrite insert_rewind.
   apply IHt. auto.
 Qed.

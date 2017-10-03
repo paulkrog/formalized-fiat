@@ -33,7 +33,13 @@ Proof.
   apply KIForall.
   rewrite delete_rewind.
   eapply IHt1; eauto.
-   apply liftTT_weaken. auto.
+  apply liftTT_weaken. auto.
+
+  Case "TExists".
+  apply KIExists.
+  rewrite delete_rewind.
+  eapply IHt1; eauto.
+  apply liftTT_weaken. auto.
 Qed.
 
 

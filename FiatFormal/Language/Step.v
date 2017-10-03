@@ -4,7 +4,7 @@ Require Import FiatFormal.Language.SubstExpExp.
 Require Export FiatFormal.Language.Exp.
 
 
-(* Small step evaluation *)
+(* Small step expression evaluation *)
 Inductive STEP : exp -> exp -> Prop :=
   (* value applications *)
   | ESLamApp
@@ -35,6 +35,15 @@ Inductive STEP : exp -> exp -> Prop :=
 
 Hint Constructors STEP.
 
+(* Small step program evaluation *)
+Inductive STEPP : prog -> prog -> Prop :=
+| SP_Prog : forall r x1 s p,
+    STEPP (PLET (IADT r x1 s) p) (substTP 0 r (substXP 0 x1 p))
+| SP_Exp  : forall x x',
+    STEP x x'
+    -> STEPP (PEXP x) (PEXP x').
+
+Hint Constructors STEPP.
 
 (********************************************************************)
 (* Multi-step evaluation.

@@ -38,7 +38,48 @@ Inductive TYPE : kienv -> tyenv -> exp -> ty -> Prop :=
 
 Hint Constructors TYPE.
 
+(* ADT judgement assigns a type to an ADT. *)
+Inductive TYPEADT : kienv -> tyenv -> adt -> ty -> Prop :=
+| TYADT : forall ke te x t1 t2,
+    (* NOTE: assuming rep types are simple, i.e. no type variables *)
+    (* would vacuously satisfy this *)
+    KIND ke t2 KStar
+    (* ADT method bodies type according to signatures *)
+    -> TYPE ke te x (substTT 0 t2 t1)
+    (* -> t = TNProd ts ... add this later, also think about how to *)
+    (* enforce type of each element in the product *)
+    -> TYPEADT ke te (IADT t2 x (TExists t1)) (TExists t1).
+Hint Constructors TYPEADT.
 
+(* Program judgement assigns a type to a program. *)
+Inductive TYPEPROG : kienv -> tyenv -> prog -> ty -> Prop :=
+| TYLet : forall ke te ad t1 p t2,
+    TYPEADT ke te ad (TExists t1)
+    -> TYPEPROG (ke :> KStar) ((liftTE 0 te) :> t1) p t2
+    -> TYPEPROG ke te (PLET ad p) t2
+| TYExp : forall ke te x t,
+    TYPE ke te x t
+    -> TYPEPROG ke te (PEXP x) t.
+
+Ltac invert_adt_type :=
+  repeat
+    (match goal with
+     | [ H : TYPEADT _ _ ?a _ |- _ ] => destruct a; inverts H
+     end).
+
+Ltac invert_exp_type :=
+  repeat
+    (match goal with
+     | [ H : TYPE _ _ _ _ |- _] => inverts H
+    end).
+
+Ltac invert_prog_type :=
+  repeat
+    (match goal with
+     | [ H : TYPEPROG _ _ _ _ |- _] => inverts H
+    end).
+
+(* ----------------------------------------------------- *)
 (* The type produced by a type judgement is well kinded. *)
 Theorem type_kind
  :  forall ke te x t

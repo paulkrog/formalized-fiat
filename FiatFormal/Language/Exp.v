@@ -10,12 +10,27 @@ Inductive exp : Type :=
  | XLAM  : exp -> exp             (* Type abstraction *)
  | XAPP  : exp -> ty  -> exp      (* Type application *)
  | XLam  : ty  -> exp -> exp      (* Value abstraction *)
- | XApp  : exp -> exp -> exp.     (* Value application *)
+ | XApp  : exp -> exp -> exp.      (* Value application *)
+
+ (* | XTup   : list exp -> exp *)
+ (* | XProj  : nat -> exp -> exp *)
+ (* | XNFun  : list ty -> exp -> exp *)
+ (* | XNApp  : exp -> exp -> exp. *)
 
 Hint Constructors exp.
 
+(* ADTs *)
+Inductive adt : Type :=
+| IADT : ty -> exp -> ty -> adt.
+Hint Constructors adt.
 
-(* Weak normal dorms cannot be reduced further by
+(* Programs *)
+Inductive prog : Type :=
+| PLET : adt -> prog -> prog
+| PEXP : exp -> prog.
+Hint Constructors prog.
+
+(* Weak normal forms cannot be reduced further by
    call-by-value evaluation. *)
 Inductive wnfX : exp -> Prop :=
  | Wnf_XVar
@@ -152,3 +167,68 @@ Fixpoint substXX (d: nat) (u: exp) (xx: exp) : exp :=
   |  XApp x1 x2
   => XApp (substXX d u x1) (substXX d u x2)
   end.
+
+(* ------------------------------------------------------------ *)
+(* NOTE: assuming rep types are simple, i.e. no type variables  *)
+Definition substTADT (d : nat) (u : ty) (ad : adt) : adt :=
+  match ad with
+  | IADT r x s => IADT r (substTX d u x) (substTT d u s)
+  end.
+
+Fixpoint substTP (d : nat) (u : ty) (p : prog) : prog :=
+  match p with
+  | PLET ad p' => PLET (substTADT d u ad) (substTP (S d) (liftTT 0 u) p')
+  | PEXP x     => PEXP (substTX d u x)
+  end.
+
+(* Substitution of expressions in ADTs. *)
+Definition substXADT (d : nat) (u : exp) (ad : adt) : adt :=
+  match ad with
+  | IADT r x s => IADT r (substXX d u x) s
+  end.
+
+(* Substitution of expressions in programs. *)
+Fixpoint substXP (d : nat) (u : exp) (p : prog) : prog :=
+  match p with
+  | PLET ad p' => PLET (substXADT d u ad) (substXP (S d) (liftXX 0 (liftTX 0 u)) p')
+  | PEXP x     => PEXP (substXX d u x)
+  end.
+
+(* Weak normal forms cannot be reduced further by
+   call-by-value evaluation. *)
+Inductive wnfP : prog -> Prop :=
+ | Wnf_PExp
+   : forall x,
+     wnfX x
+     -> wnfP (PEXP x).
+Hint Constructors wnfP.
+
+(* NOTE: assuming rep types are simple, i.e. no type variables  *)
+(* A well formed ADT is closed under the given environments *)
+Definition wfADT (ke : kienv) (te : tyenv) (ad : adt) : Prop :=
+  match ad with
+    (* perhaps here I can enforce appropriate nary function types in sig *)
+  | IADT r x s => wfX ke te x /\ wfT ke s
+  end.
+Hint Unfold wfADT.
+
+(* A well formed program is closed under the given environments *)
+Fixpoint wfP (ke: kienv) (te: tyenv) (p: prog) : Prop :=
+  match p with
+  | PLET ad p' => wfADT ke te ad /\ wfP (ke :> KStar) (liftTE 0 te) p'
+  | PEXP x     => wfX ke te x
+ end.
+Hint Unfold wfP.
+
+(* Closed programs are well formed under empty environments *)
+Definition closedP (p : prog) : Prop
+ := wfP nil nil p.
+Hint Unfold closedP.
+
+(* ValuePs are closed programs that cannot be reduced further. *)
+Inductive valueP : prog -> Prop :=
+ | ValueP
+   : forall p,
+     wnfP p -> closedP p
+     -> valueP p.
+Hint Constructors valueP.

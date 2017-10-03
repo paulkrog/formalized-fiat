@@ -44,3 +44,4 @@ FiatFormal/Tactics/Short.v
 FiatFormal/Norm.v
 FiatFormal/Tactics.v
 FiatFormal/PMKList.v
+FiatFormal/PMKTactics.v
