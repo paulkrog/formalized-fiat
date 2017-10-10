@@ -18,23 +18,23 @@ Proof.
  Case "XVar".
   inverts H. false.
 
- Case "XLAM".
-  left. apply type_wfX in H. auto.
+ (* Case "XLAM". *)
+ (*  left. apply type_wfX in H. auto. *)
 
- Case "XAPP".
-  inverts H.
-  destruct IHx. eauto.
-  SCase "x value".
-   right. inverts H. inverts H4.
-    inverts H1. false.
-    inverts H0.
-    exists (substTX 0 t x1). eapply ESLAMAPP.
-    inverts H0.
-  SCase "x steps".
-   right.
-    destruct H as [x'].
-    exists (XAPP x' t).
-    apply ESAPP1. auto.
+ (* Case "XAPP". *)
+ (*  inverts H. *)
+ (*  destruct IHx. eauto. *)
+ (*  SCase "x value". *)
+ (*   right. inverts H. inverts H4. *)
+ (*    inverts H1. false. *)
+ (*    inverts H0. *)
+ (*    exists (substTX 0 t x1). eapply ESLAMAPP. *)
+ (*    inverts H0. *)
+ (*  SCase "x steps". *)
+ (*   right. *)
+ (*    destruct H as [x']. *)
+ (*    exists (XAPP x' t). *)
+ (*    apply ESAPP1. auto. *)
 
  Case "XLam".
   left. apply type_wfX in H. auto.

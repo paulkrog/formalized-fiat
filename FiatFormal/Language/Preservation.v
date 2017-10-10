@@ -20,20 +20,20 @@ Proof.
  Case "XVar".
   inverts HS.
 
- Case "XLAM".
-  inverts HS.
+ (* Case "XLAM". *)
+ (*  inverts HS. *)
 
- Case "XAPP".
-  inverts HT.
-  inverts keep HS.
+ (* Case "XAPP". *)
+ (*  inverts HT. *)
+ (*  inverts keep HS. *)
 
-  SCase "ESAPPLAM".
-   inverts H3.
-   eapply subst_type_value in H4; eauto.
-   rewrite substTE_liftTE in H4. auto.
+  (* SCase "ESAPPLAM". *)
+  (*  inverts H3. *)
+  (*  eapply subst_type_value in H4; eauto. *)
+  (*  rewrite substTE_liftTE in H4. auto. *)
 
-  SCase "ESAPP1".
-   apply TYAPP; eauto.
+  (* SCase "ESAPP1". *)
+  (*  apply TYAPP; eauto. *)
 
  Case "XLam".
   inverts HS.

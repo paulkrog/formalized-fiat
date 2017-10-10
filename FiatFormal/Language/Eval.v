@@ -19,10 +19,10 @@ Inductive EVAL : exp -> exp -> Prop :=
    ,  wnfX v2
    -> EVAL v2 v2
 
- | EVLAMAPP
-   : forall x1 x12 t2 v3
-   ,  EVAL x1 (XLAM x12)     -> EVAL (substTX 0 t2 x12) v3
-   -> EVAL (XAPP x1 t2) v3
+ (* | EVLAMAPP *)
+ (*   : forall x1 x12 t2 v3 *)
+ (*   ,  EVAL x1 (XLAM x12)     -> EVAL (substTX 0 t2 x12) v3 *)
+ (*   -> EVAL (XAPP x1 t2) v3 *)
 
  | EVLamApp
    :  forall x1 t11 x12 x2 v2 v3
@@ -61,18 +61,18 @@ Proof.
  Case "EVDone".
   intros. apply ESNone.
 
- Case "EVLAMAPP".
-  intros. inverts HT.
-  lets E1: IHHE1 H3. clear IHHE1.
-  lets T1: preservation_steps H3 E1. inverts keep T1.
-  lets T2: subst_type_value H4 H5.
-   simpl in T2.
-  lets E2: IHHE2 T2.
-  eapply ESAppend.
-   apply steps_APP1. eauto.
-  eapply ESAppend.
-   eapply ESStep.
-    eapply ESLAMAPP. auto.
+ (* Case "EVLAMAPP". *)
+ (*  intros. inverts HT. *)
+ (*  lets E1: IHHE1 H3. clear IHHE1. *)
+ (*  lets T1: preservation_steps H3 E1. inverts keep T1. *)
+ (*  lets T2: subst_type_value H4 H5. *)
+ (*   simpl in T2. *)
+ (*  lets E2: IHHE2 T2. *)
+ (*  eapply ESAppend. *)
+ (*   apply steps_APP1. eauto. *)
+ (*  eapply ESAppend. *)
+ (*   eapply ESStep. *)
+ (*    eapply ESLAMAPP. auto. *)
 
  Case "EVLamApp".
   intros. inverts HT.
@@ -131,17 +131,17 @@ Proof.
    inverts H1.
    eapply EVLamApp; eauto.
 
- Case "XAPP".
-  SCase "type app".
-   eapply EVLAMAPP.
-   eauto.
-   inverts H.
-   auto.
+ (* Case "XAPP". *)
+ (*  SCase "type app". *)
+ (*   eapply EVLAMAPP. *)
+ (*   eauto. *)
+ (*   inverts H. *)
+ (*   auto. *)
 
-  SCase "x1 steps".
-   inverts H. inverts H1.
-    inverts H.
-    eapply EVLAMAPP; eauto.
+ (*  SCase "x1 steps". *)
+ (*   inverts H. inverts H1. *)
+ (*    inverts H. *)
+ (*    eapply EVLAMAPP; eauto. *)
 Qed.
 
 

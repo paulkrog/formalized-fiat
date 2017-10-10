@@ -32,15 +32,15 @@ Proof.
     simpl. nnat. apply get_delete_below. omega.
     auto.
 
- Case "XLAM".
-  eapply (IHx1 ix) in H5.
-  apply TYLAM.
-   unfold liftTE. rewrite map_delete. eauto.
-   eapply get_map. eauto.
-   unfold liftTE. rewrite <- map_delete.
-    assert (map (liftTT 0) (delete ix te) = liftTE 0 (delete ix te)).
-     unfold liftTE. auto. rewrite H0. clear H0.
-    apply type_kienv_weaken. auto.
+ (* Case "XLAM". *)
+ (*  eapply (IHx1 ix) in H5. *)
+ (*  apply TYLAM. *)
+ (*   unfold liftTE. rewrite map_delete. eauto. *)
+ (*   eapply get_map. eauto. *)
+ (*   unfold liftTE. rewrite <- map_delete. *)
+ (*    assert (map (liftTT 0) (delete ix te) = liftTE 0 (delete ix te)). *)
+ (*     unfold liftTE. auto. rewrite H0. clear H0. *)
+ (*    apply type_kienv_weaken. auto. *)
 
  Case "XLam".
   apply TYLam.

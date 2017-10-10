@@ -20,10 +20,10 @@ Inductive KIND : kienv -> ty -> ki -> Prop :=
    ,  get  i ke = Some k
    -> KIND ke (TVar i) k
 
- | KIForall
-   :  forall ke t
-   ,  KIND (ke :> KStar) t           KStar
-   -> KIND ke            (TForall t) KStar
+ (* | KIForall *)
+ (*   :  forall ke t *)
+ (*   ,  KIND (ke :> KStar) t           KStar *)
+ (*   -> KIND ke            (TForall t) KStar *)
 
  | KIFun
    :  forall ke t1 t2
@@ -76,10 +76,10 @@ Proof.
  Case "TVar".
   lift_cases; intros; auto.
 
- Case "TForall".
-  apply KIForall.
-  rewrite insert_rewind.
-  apply IHt. auto.
+ (* Case "TForall". *)
+ (*  apply KIForall. *)
+ (*  rewrite insert_rewind. *)
+ (*  apply IHt. auto. *)
 
   Case "TExists".
   apply KIExists.

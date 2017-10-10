@@ -7,8 +7,8 @@ Require Export FiatFormal.Language.Ki.
 (* Expressions *)
 Inductive exp : Type :=
  | XVar  : nat -> exp             (* deBruijn indices *)
- | XLAM  : exp -> exp             (* Type abstraction *)
- | XAPP  : exp -> ty  -> exp      (* Type application *)
+ (* | XLAM  : exp -> exp             (* Type abstraction *) *)
+ (* | XAPP  : exp -> ty  -> exp      (* Type application *) *)
  | XLam  : ty  -> exp -> exp      (* Value abstraction *)
  | XApp  : exp -> exp -> exp.      (* Value application *)
 
@@ -37,9 +37,9 @@ Inductive wnfX : exp -> Prop :=
    : forall i
    , wnfX (XVar i)
 
- | Wnf_XLAM
-   : forall x1
-   , wnfX (XLAM x1)
+ (* | Wnf_XLAM *)
+ (*   : forall x1 *)
+ (*   , wnfX (XLAM x1) *)
 
  | Wnf_XLam
    : forall t1 x2
@@ -52,8 +52,8 @@ Hint Constructors wnfX.
 Fixpoint wfX (ke: kienv) (te: tyenv) (xx: exp) : Prop :=
  match xx with
  | XVar i     => exists t, get i te = Some t
- | XLAM x     => wfX (ke :> KStar) (liftTE 0 te) x
- | XAPP x t   => wfX ke te x  /\ wfT ke t
+ (* | XLAM x     => wfX (ke :> KStar) (liftTE 0 te) x *)
+ (* | XAPP x t   => wfX ke te x  /\ wfT ke t *)
  | XLam t x   => wfT ke t     /\ wfX ke (te :> t) x
  | XApp x1 x2 => wfX ke te x1 /\ wfX ke te x2
  end.
@@ -82,11 +82,11 @@ Fixpoint liftTX (d: nat) (xx: exp) : exp :=
   |  XVar _     => xx
 
   (* Increase type depth when moving across type abstractions. *)
-  |  XLAM x
-  => XLAM (liftTX (S d) x)
+  (* |  XLAM x *)
+  (* => XLAM (liftTX (S d) x) *)
 
-  |  XAPP x t
-  => XAPP (liftTX d x)  (liftTT d t)
+  (* |  XAPP x t *)
+  (* => XAPP (liftTX d x)  (liftTT d t) *)
 
   |  XLam t x
   => XLam (liftTT d t)  (liftTX d x)
@@ -104,11 +104,11 @@ Fixpoint liftXX (d: nat) (xx: exp) : exp :=
       then XVar (S ix)
       else xx
 
-  |  XLAM x
-  => XLAM (liftXX d x)
+  (* |  XLAM x *)
+  (* => XLAM (liftXX d x) *)
 
-  |  XAPP x t
-  => XAPP (liftXX d x) t
+  (* |  XAPP x t *)
+  (* => XAPP (liftXX d x) t *)
 
   (* Increase value depth when moving across value abstractions. *)
   |  XLam t x
@@ -127,11 +127,11 @@ Fixpoint substTX (d: nat) (u: ty) (xx: exp) : exp :=
 
   (* Lift free type variables in the type to be substituted
      when we move across type abstractions. *)
-  |  XLAM x
-  => XLAM (substTX (S d) (liftTT 0 u) x)
+  (* |  XLAM x *)
+  (* => XLAM (substTX (S d) (liftTT 0 u) x) *)
 
-  |  XAPP x t
-  => XAPP (substTX d u x)  (substTT d u t)
+  (* |  XAPP x t *)
+  (* => XAPP (substTX d u x)  (substTT d u t) *)
 
   |  XLam t x
   => XLam (substTT d u t)  (substTX d u x)
@@ -153,11 +153,11 @@ Fixpoint substXX (d: nat) (u: exp) (xx: exp) : exp :=
 
   (* Lift free type variables in the expression to be substituted
      when we move across type abstractions. *)
-  |  XLAM x
-  => XLAM (substXX d (liftTX 0 u) x)
+  (* |  XLAM x *)
+  (* => XLAM (substXX d (liftTX 0 u) x) *)
 
-  |  XAPP x t
-  => XAPP (substXX d u x) t
+  (* |  XAPP x t *)
+  (* => XAPP (substXX d u x) t *)
 
   (* Lift free value variables in the expression to be substituted
      when we move across value abstractions. *)
@@ -169,10 +169,9 @@ Fixpoint substXX (d: nat) (u: exp) (xx: exp) : exp :=
   end.
 
 (* ------------------------------------------------------------ *)
-(* NOTE: assuming rep types are simple, i.e. no type variables  *)
 Definition substTADT (d : nat) (u : ty) (ad : adt) : adt :=
   match ad with
-  | IADT r x s => IADT r (substTX d u x) (substTT d u s)
+  | IADT r x s => IADT (substTT d u r) (substTX d u x) (substTT d u s)
   end.
 
 Fixpoint substTP (d : nat) (u : ty) (p : prog) : prog :=
@@ -203,19 +202,23 @@ Inductive wnfP : prog -> Prop :=
      -> wnfP (PEXP x).
 Hint Constructors wnfP.
 
-(* NOTE: assuming rep types are simple, i.e. no type variables  *)
-(* A well formed ADT is closed under the given environments *)
 Definition wfADT (ke : kienv) (te : tyenv) (ad : adt) : Prop :=
   match ad with
-    (* perhaps here I can enforce appropriate nary function types in sig *)
-  | IADT r x s => wfX ke te x /\ wfT ke s
+    (* perhaps here I can enforce appropriate nary function types in
+       sig along with function form of method bodies similar to wfP below *)
+  | IADT r x s => wfT ke r /\ wfX ke te x /\ wfT ke s
   end.
 Hint Unfold wfADT.
 
 (* A well formed program is closed under the given environments *)
 Fixpoint wfP (ke: kienv) (te: tyenv) (p: prog) : Prop :=
   match p with
-  | PLET ad p' => wfADT ke te ad /\ wfP (ke :> KStar) (liftTE 0 te) p'
+  | PLET ad p' => match ad with
+                 | IADT r x s => match s with
+                                | TExists t => wfADT ke te ad /\ wfP (ke :> KStar) ((liftTE 0 te) :> t) p'
+                                | _ => False
+                                end
+                 end
   | PEXP x     => wfX ke te x
  end.
 Hint Unfold wfP.

@@ -5,59 +5,32 @@ Require Import FiatFormal.Language.SubstTypeExp.
 Require Import FiatFormal.Language.SubstTypeType.
 Require Import FiatFormal.Language.TyJudge.
 
+Require Import FiatFormal.Language.SubstExistential.
+Require Import FiatFormal.Language.Preservation.
 
-(* When a program takes a step the results has the same type. *)
+(* When a closed program takes a step the results has the same type. *)
 Theorem preservationP
- :  forall ke te p p' t
- ,  TYPEPROG ke te p t
+ :  forall p p' t
+ ,  TYPEPROG nil nil p t
  -> STEPP p p'
- -> TYPEPROG ke te p' t.
+ -> TYPEPROG nil nil p' t.
 Proof.
-  intros ke te x x' t HT HS.
-  gen ke te x' t.
-  induction x; intros.
+  intros p p' t HT HS.
+  gen p' t.
+  induction p; intros.
   Case "PLet".
   invert HS; intros.
-
-
- intros ke te x x' t HT HS.
- gen ke te x' t.
- induction x; intros.
-
- Case "XVar".
-  inverts HS.
-
- Case "XLAM".
-  inverts HS.
-
- Case "XAPP".
-  inverts HT.
-  inverts keep HS.
-
-  SCase "ESAPPLAM".
-   inverts H3.
-   eapply subst_type_value in H4; eauto.
-   rewrite substTE_liftTE in H4. auto.
-
-  SCase "ESAPP1".
-   apply TYAPP; eauto.
-
- Case "XLam".
-  inverts HS.
-
- Case "XApp".
-  inverts HT.
-  inverts keep HS.
-
-  SCase "ESAppLam".
-   inverts H3.
-   lets D: subst_value_value H9 H5. auto.
-
-  SCase "EsApp1".
-   eapply TYApp; eauto.
-
-  SCase "EsApp2".
-   eapply TYApp; eauto.
+  invert HT; intros; subst.
+  invert H; intros; subst.
+  eapply subst_ADT_prog.
+  simpl in *. eassumption.
+  invert H6; intros; subst.
+  assumption.
+  Case "PExp".
+  invert HS; intros; subst.
+  invert HT; intros; subst.
+  apply TYExp.
+  apply (preservation _ _ _ _ _ H3 H0).
 Qed.
 
 

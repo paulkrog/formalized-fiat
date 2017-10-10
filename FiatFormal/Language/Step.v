@@ -24,21 +24,22 @@ Inductive STEP : exp -> exp -> Prop :=
     -> STEP (XApp v1 x2) (XApp v1 x2')
 
   (* type applications *)
-  | ESLAMAPP
-    :  forall x12 t2
-    ,  STEP (XAPP (XLAM x12) t2) (substTX 0 t2 x12)
+  (* | ESLAMAPP *)
+  (*   :  forall x12 t2 *)
+  (*   ,  STEP (XAPP (XLAM x12) t2) (substTX 0 t2 x12) *)
 
-  | ESAPP1
-    :  forall x1 x1' t2
-    ,  STEP x1 x1'
-    -> STEP (XAPP x1 t2) (XAPP x1' t2).
+  (* | ESAPP1 *)
+  (*   :  forall x1 x1' t2 *)
+  (*   ,  STEP x1 x1' *)
+  (*   -> STEP (XAPP x1 t2) (XAPP x1' t2) *).
 
 Hint Constructors STEP.
 
 (* Small step program evaluation *)
 Inductive STEPP : prog -> prog -> Prop :=
-| SP_Prog : forall r x1 s p,
-    STEPP (PLET (IADT r x1 s) p) (substTP 0 r (substXP 0 x1 p))
+| SP_Prog : forall r x s p,
+    (* STEPP (PLET (IADT r x s) p) (substTP 0 r (substXP 0 x p)) *)
+    STEPP (PLET (IADT r x s) p) (substXP 0 x (substTP 0 r p))
 | SP_Exp  : forall x x',
     STEP x x'
     -> STEPP (PEXP x) (PEXP x').
@@ -103,13 +104,13 @@ Qed.
 Hint Resolve steps_app2.
 
 
-Lemma steps_APP1
- :  forall x1 x1' t2
- ,  STEPS x1 x1'
- -> STEPS (XAPP x1 t2) (XAPP x1' t2).
-Proof.
- intros. induction H; eauto.
-Qed.
+(* Lemma steps_APP1 *)
+(*  :  forall x1 x1' t2 *)
+(*  ,  STEPS x1 x1' *)
+(*  -> STEPS (XAPP x1 t2) (XAPP x1' t2). *)
+(* Proof. *)
+(*  intros. induction H; eauto. *)
+(* Qed. *)
 
 
 (********************************************************************)

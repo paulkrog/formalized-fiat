@@ -29,11 +29,11 @@ Proof.
     burn.
     simpl. nnat. apply get_delete_below. omega.
 
- Case "TForall".
-  apply KIForall.
-  rewrite delete_rewind.
-  eapply IHt1; eauto.
-  apply liftTT_weaken. auto.
+ (* Case "TForall". *)
+ (*  apply KIForall. *)
+ (*  rewrite delete_rewind. *)
+ (*  eapply IHt1; eauto. *)
+ (*  apply liftTT_weaken. auto. *)
 
   Case "TExists".
   apply KIExists.

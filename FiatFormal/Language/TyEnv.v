@@ -18,7 +18,7 @@ Hint Unfold substTE.
 
 
 (********************************************************************)
-(* The following lemmas as similar to the ones in Ty.v,
+(* The following lemmas are similar to the ones in Ty.v,
    except that we've applied them to entire type environments.
  *)
 

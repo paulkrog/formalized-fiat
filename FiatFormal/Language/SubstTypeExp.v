@@ -25,18 +25,18 @@ Proof.
   unfold substTE. eapply get_map. auto.
   eapply subst_type_type_ix; eauto.
 
- Case "XLAM".
-  simpl. apply TYLAM.
-  rewrite delete_rewind.
-  rewrite (liftTE_substTE 0 ix).
-  eapply IHx1; eauto.
-   apply liftTT_weaken. auto.
+ (* Case "XLAM". *)
+ (*  simpl. apply TYLAM. *)
+ (*  rewrite delete_rewind. *)
+ (*  rewrite (liftTE_substTE 0 ix). *)
+ (*  eapply IHx1; eauto. *)
+ (*   apply liftTT_weaken. auto. *)
 
- Case "XAPP".
-  rewrite (substTT_substTT 0 ix).
-  apply TYAPP.
-   simpl. eapply (IHx1 ix) in H6; eauto.
-   simpl. eapply subst_type_type_ix; eauto.
+ (* Case "XAPP". *)
+ (*  rewrite (substTT_substTT 0 ix). *)
+ (*  apply TYAPP. *)
+ (*   simpl. eapply (IHx1 ix) in H6; eauto. *)
+ (*   simpl. eapply subst_type_type_ix; eauto. *)
 
  Case "XLam".
   simpl. apply TYLam.

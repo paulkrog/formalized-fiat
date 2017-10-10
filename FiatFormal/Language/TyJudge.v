@@ -25,38 +25,37 @@ Inductive TYPE : kienv -> tyenv -> exp -> ty -> Prop :=
    -> TYPE ke te x2 t11
    -> TYPE ke te (XApp x1 x2) t12
 
- | TYLAM
-   :  forall ke te x1 t1
-   ,  TYPE (ke :> KStar) (liftTE 0 te) x1        t1
-   -> TYPE ke            te           (XLAM x1) (TForall t1)
+ (* | TYLAM *)
+ (*   :  forall ke te x1 t1 *)
+ (*   ,  TYPE (ke :> KStar) (liftTE 0 te) x1        t1 *)
+ (*   -> TYPE ke            te           (XLAM x1) (TForall t1) *)
 
- | TYAPP
-   :  forall ke te x1 t1 t2
-   ,  TYPE ke te x1 (TForall t1)
-   -> KIND ke t2 KStar
-   -> TYPE ke te (XAPP x1 t2) (substTT 0 t2 t1).
+ (* | TYAPP *)
+ (*   :  forall ke te x1 t1 t2 *)
+ (*   ,  TYPE ke te x1 (TForall t1) *)
+ (*   -> KIND ke t2 KStar *)
+ (*   -> TYPE ke te (XAPP x1 t2) (substTT 0 t2 t1) *).
 
 Hint Constructors TYPE.
 
 (* ADT judgement assigns a type to an ADT. *)
 Inductive TYPEADT : kienv -> tyenv -> adt -> ty -> Prop :=
-| TYADT : forall ke te x t1 t2,
-    (* NOTE: assuming rep types are simple, i.e. no type variables *)
-    (* would vacuously satisfy this *)
-    KIND ke t2 KStar
+| TYADT : forall ke te x τr τ,
+    KIND ke τr KStar
+    -> KIND (ke :> KStar) τ KStar
     (* ADT method bodies type according to signatures *)
-    -> TYPE ke te x (substTT 0 t2 t1)
+    -> TYPE ke te x (substTT 0 τr τ)
     (* -> t = TNProd ts ... add this later, also think about how to *)
     (* enforce type of each element in the product *)
-    -> TYPEADT ke te (IADT t2 x (TExists t1)) (TExists t1).
+    -> TYPEADT ke te (IADT τr x (TExists τ)) (TExists τ).
 Hint Constructors TYPEADT.
 
 (* Program judgement assigns a type to a program. *)
 Inductive TYPEPROG : kienv -> tyenv -> prog -> ty -> Prop :=
-| TYLet : forall ke te ad t1 p t2,
-    TYPEADT ke te ad (TExists t1)
-    -> TYPEPROG (ke :> KStar) ((liftTE 0 te) :> t1) p t2
-    -> TYPEPROG ke te (PLET ad p) t2
+| TYLet : forall ke te τr x τ p t2,
+    TYPEADT ke te (IADT τr x (TExists τ)) (TExists τ)
+    -> TYPEPROG (ke :> KStar) ((liftTE 0 te) :> τ) p t2
+    -> TYPEPROG ke te (PLET (IADT τr x (TExists τ)) p) (substTT 0 τr t2)
 | TYExp : forall ke te x t,
     TYPE ke te x t
     -> TYPEPROG ke te (PEXP x) t.
@@ -79,6 +78,14 @@ Ltac invert_prog_type :=
      | [ H : TYPEPROG _ _ _ _ |- _] => inverts H
     end).
 
+Ltac inverts_type :=
+  repeat
+    (match goal with
+     | [ H : TYPE _ _ _ _ |- _ ] => inverts H
+     | [ H : TYPEADT _ _ _ _ |- _ ] => inverts H
+     | [ H : TYPEPROG _ _ _ _ |- _ ] => inverts H
+     end).
+
 (* ----------------------------------------------------- *)
 (* The type produced by a type judgement is well kinded. *)
 Theorem type_kind
@@ -89,9 +96,9 @@ Proof.
  intros. gen ke te t.
  induction x; intros; inverts H; eauto.
 
- Case "XAPP".
-  apply IHx in H4. inverts H4.
-  eapply subst_type_type; eauto.
+ (* Case "XAPP". *)
+ (*  apply IHx in H4. inverts H4. *)
+ (*  eapply subst_type_type; eauto. *)
 
  Case "XLam".
   eapply IHx1 in H4. inverts H4. auto.
@@ -110,14 +117,14 @@ Proof.
  Case "XVar".
   inverts H. eauto.
 
- Case "XLAM".
-  inverts H.
-  apply IHx in H3. eauto.
+ (* Case "XLAM". *)
+ (*  inverts H. *)
+ (*  apply IHx in H3. eauto. *)
 
- Case "XAPP".
-  inverts H.
-  lets D: IHx H4. split.
-   auto. eapply kind_wfT. eauto.
+ (* Case "XAPP". *)
+ (*  inverts H. *)
+ (*  lets D: IHx H4. split. *)
+ (*   auto. eapply kind_wfT. eauto. *)
 
  Case "XLam".
   inverts H.
@@ -156,17 +163,17 @@ Proof.
   apply get_map. auto.
   apply liftTT_insert. auto.
 
- Case "XLAM".
-  eapply TYLAM.
-  rewrite insert_rewind.
-   rewrite (liftTE_liftTE 0 ix).
-   apply IHx1. auto.
+ (* Case "XLAM". *)
+ (*  eapply TYLAM. *)
+ (*  rewrite insert_rewind. *)
+ (*   rewrite (liftTE_liftTE 0 ix). *)
+ (*   apply IHx1. auto. *)
 
- Case "XAPP".
-  rewrite (liftTT_substTT' 0 ix). simpl.
-  eapply TYAPP.
-  eapply (IHx1 ix) in H4. simpl in H4. eauto.
-  apply liftTT_insert. auto.
+ (* Case "XAPP". *)
+ (*  rewrite (liftTT_substTT' 0 ix). simpl. *)
+ (*  eapply TYAPP. *)
+ (*  eapply (IHx1 ix) in H4. simpl in H4. eauto. *)
+ (*  apply liftTT_insert. auto. *)
 
  Case "XLam".
   apply TYLam.
@@ -211,13 +218,13 @@ Proof.
  Case "XVar".
   lift_cases; intros; auto.
 
- Case "XLAM".
-  apply TYLAM. simpl.
-  assert ( liftTE 0 (insert ix t2 te)
-         = insert ix (liftTT 0 t2) (liftTE 0 te)).
-   unfold liftTE. rewrite map_insert. auto.
-  rewrite H.
-  apply IHx1. auto.
+ (* Case "XLAM". *)
+ (*  apply TYLAM. simpl. *)
+ (*  assert ( liftTE 0 (insert ix t2 te) *)
+ (*         = insert ix (liftTT 0 t2) (liftTE 0 te)). *)
+ (*   unfold liftTE. rewrite map_insert. auto. *)
+ (*  rewrite H. *)
+ (*  apply IHx1. auto. *)
 
  Case "XLam".
   eapply TYLam.
