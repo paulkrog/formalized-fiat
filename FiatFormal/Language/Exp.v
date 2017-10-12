@@ -19,6 +19,9 @@ Inductive exp : Type :=
 
 Hint Constructors exp.
 
+Inductive hasChoiceX : exp -> Prop :=
+.
+
 (* ADTs *)
 Inductive adt : Type :=
 | IADT : ty -> exp -> ty -> adt.
@@ -29,6 +32,9 @@ Inductive prog : Type :=
 | PLET : adt -> prog -> prog
 | PEXP : exp -> prog.
 Hint Constructors prog.
+
+Inductive hasChoiceP : prog -> Prop :=
+.
 
 (* Weak normal forms cannot be reduced further by
    call-by-value evaluation. *)

@@ -8,7 +8,7 @@ Require Import FiatFormal.Language.TyJudge.
 Require Import FiatFormal.Language.SubstExistential.
 Require Import FiatFormal.Language.Preservation.
 
-(* When a closed program takes a step the results has the same type. *)
+(* When a closed program takes a step the result has the same type. *)
 Theorem preservationP
  :  forall p p' t
  ,  TYPEPROG nil nil p t
@@ -22,9 +22,9 @@ Proof.
   invert HS; intros.
   invert HT; intros; subst.
   invert H; intros; subst.
-  eapply subst_ADT_prog.
+  eapply subst_ADT_prog; invert H6; intros; subst.
   simpl in *. eassumption.
-  invert H6; intros; subst.
+  eassumption.
   assumption.
   Case "PExp".
   invert HS; intros; subst.

@@ -10,7 +10,7 @@ Require Import FiatFormal.Language.TyJudge.
 Theorem progress
  :  forall x
  ,  (exists t, TYPE nil nil x t)
- -> value x \/ (exists x', STEP x x').
+ -> value x \/ (exists x', STEP x x') \/ hasChoiceX x.
 Proof.
  intros.
  induction x; destruct H as [tx].
@@ -42,24 +42,33 @@ Proof.
  Case "XApp".
   right.
   inverts H.
-  destruct IHx1; eauto.
+  destruct IHx1 as [| []]; eauto.
   SCase "x1 value".
-   destruct IHx2; eauto.
-   inverts H.
+  destruct IHx2 as [| []]; eauto.
 
    SSCase "x2 value".
-    inverts H1.
-     inverts H2. false.
-     inverts H4.
-     exists (substXX 0 x2 x0). apply ESLamApp. auto.
+   left.
+   inverts H.
+   inverts H1.
+   inverts H2. false.
+   inverts H4.
+   exists (substXX 0 x2 x0). apply ESLamApp. auto.
 
    SSCase "x2 steps".
-    destruct H0 as [x2'].
-    exists (XApp x1 x2').
-    apply ESApp2; auto.
+   left.
+   destruct H0 as [x2'].
+   exists (XApp x1 x2').
+   apply ESApp2; auto.
+
+   SSCase "x2 hasChoice".
+   inversion H0.
 
   SCase "x1 steps".
-   destruct H as [x1'].
-   exists (XApp x1' x2).
-   apply ESApp1; auto.
+  left.
+  destruct H as [x1'].
+  exists (XApp x1' x2).
+  apply ESApp1; auto.
+
+  SCase "x1 hasChoice".
+  inversion H.
 Qed.

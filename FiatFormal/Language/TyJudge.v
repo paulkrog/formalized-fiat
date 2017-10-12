@@ -42,7 +42,8 @@ Hint Constructors TYPE.
 Inductive TYPEADT : kienv -> tyenv -> adt -> ty -> Prop :=
 | TYADT : forall ke te x τr τ,
     KIND ke τr KStar
-    -> KIND (ke :> KStar) τ KStar
+    (* -> KIND (ke :> KStar) τ *)
+    (* KStar *) (* decided this wasn't necessary since in presence of following premise *)
     (* ADT method bodies type according to signatures *)
     -> TYPE ke te x (substTT 0 τr τ)
     (* -> t = TNProd ts ... add this later, also think about how to *)

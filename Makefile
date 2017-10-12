@@ -140,7 +140,8 @@ VFILES:=FiatFormal/Language/Base.v\
   FiatFormal/Tactics/Short.v\
   FiatFormal/Norm.v\
   FiatFormal/Tactics.v\
-  FiatFormal/PMKList.v
+  FiatFormal/PMKList.v\
+  FiatFormal/PMKTactics.v
 
 ifneq ($(filter-out archclean clean cleanall printenv,$(MAKECMDGOALS)),)
 -include $(addsuffix .d,$(VFILES))
