@@ -9,32 +9,116 @@ Inductive ty  : Type :=
  (* | TForall : ty  -> ty           (* Type variable binding. *) *)
  | TFun    : ty  -> ty -> ty     (* Function type constructor. *)
 
- | TExists : ty -> ty.
- (* | TNProd   : list ty -> ty *)
- (* | TNFun    : list ty -> ty -> ty *)
- (* | TExists  : ty -> ty. *)
+ | TExists : ty -> ty
+ | TNProd   : list ty -> ty
+ | TNFun    : list ty -> ty -> ty.
+(* Scheme ty_list_rec := Induction for ty Sort Type *)
+(* with list_ty_rec := Induction for list Sort Type. *)
+(* Print ty_mutind. *)
+(* Think need to write my own *)
+
+
+(********************************************************************)
+(* Mutual induction principle for expressions.
+   As expressions are indirectly mutually recursive with lists,
+   Coq's Combined scheme command won't make us a strong enough
+   induction principle, so we need to write it out by hand. *)
+
+(* Theorem exp_mutind *)
+(*  : forall *)
+(*     (PX : exp -> Prop) *)
+(*     (PA : alt -> Prop) *)
+(*  ,  (forall n,                                PX (XVar n)) *)
+(*  -> (forall t  x1,   PX x1                 -> PX (XLam t x1)) *)
+(*  -> (forall x1 x2,   PX x1 -> PX x2        -> PX (XApp x1 x2)) *)
+(*  -> (forall dc xs,            Forall PX xs -> PX (XCon dc xs)) *)
+(*  -> (forall x  aa,   PX x  -> Forall PA aa -> PX (XCase x aa)) *)
+(*  -> (forall dc ts x, PX x                  -> PA (AAlt dc ts x)) *)
+(*  ->  forall x, PX x. *)
+(* Proof. *)
+(*  intros PX PA. *)
+(*  intros var lam app con case alt. *)
+(*  refine (fix  IHX x : PX x := _ *)
+(*          with IHA a : PA a := _ *)
+(*          for  IHX). *)
+
+(*  (* expressions *) *)
+(*  case x; intros. *)
+
+(*  Case "XVar". *)
+(*   apply var. *)
+
+(*  Case "XLam". *)
+(*   apply lam. *)
+(*    apply IHX. *)
+
+(*  Case "XApp". *)
+(*   apply app. *)
+(*    apply IHX. *)
+(*    apply IHX. *)
+
+(*  Case "XCon". *)
+(*   apply con. *)
+(*    induction l; intuition. *)
+
+(*  Case "XCase". *)
+(*   apply case. *)
+(*    apply IHX. *)
+(*    induction l; intuition. *)
+
+(*  (* alternatives *) *)
+(*  case a; intros. *)
+
+(*  Case "XAlt". *)
+(*   apply alt. *)
+(*    apply IHX. *)
+(* Qed. *)
 
 Hint Constructors ty.
 
 
 (********************************************************************)
+Inductive wfT : kienv -> ty -> Prop :=
+| WfT_TCon : forall ke n,
+    wfT ke (TCon n)
+| WfT_TVar : forall ke i k,
+    get i ke = Some k
+    -> wfT ke (TVar i)
+| WfT_TFun : forall ke t1 t2,
+    wfT ke t1
+    -> wfT ke t2
+    -> wfT ke (TFun t1 t2)
+| WfT_TNProd : forall ke ts,
+    Forall (wfT ke) ts
+    -> wfT ke (TNProd ts)
+| WfT_TNFun : forall ke ts tRes,
+    Forall (wfT ke) ts
+    -> wfT ke tRes
+    -> wfT ke (TNFun ts tRes)
+| WfT_TExists : forall ke t,
+    wfT (ke :> KStar) t
+    -> wfT ke (TExists t).
+
+Hint Constructors wfT.
+
+(* Similar to wfX, wfT has been made into an Inductive datatype above *)
 (* Well formed types are closed under the given kind environment *)
-Fixpoint wfT (ke: kienv) (tt: ty) : Prop :=
- match tt with
- | TCon _     => True
- | TVar i     => exists k, get i ke = Some k
- (* | TForall t  => wfT (ke :> KStar) t *)
- | TFun t1 t2 => wfT ke t1 /\ wfT ke t2
+(* Fixpoint wfT (ke: kienv) (tt: ty) : Prop := *)
+(*  match tt with *)
+(*  | TCon _     => True *)
+(*  | TVar i     => exists k, get i ke = Some k *)
+(*  (* | TForall t  => wfT (ke :> KStar) t *) *)
+(*  | TFun t1 t2 => wfT ke t1 /\ wfT ke t2 *)
 
- (* | TNProd ts      => True *)
- (* | TNFun  ts tRes => Forall (wfT ke) ts /\ wfT ke tRes *)
- (* | TNFun ts tRes => wfT ke tRes *)
- | TExists t     => wfT (ke :> KStar) t
- end.
-Hint Unfold wfT.
+(*  (* | TNProd ts      => True *) *)
+(*  (* | TNFun  ts tRes => Forall (wfT ke) ts /\ wfT ke tRes *) *)
+(*  (* | TNFun ts tRes => wfT ke tRes *) *)
+(*  | TExists t     => wfT (ke :> KStar) t *)
+(*  end. *)
+(* Hint Unfold wfT. *)
 
 
-(* A closed type is well formed under an empty type environment. *)
+(* A closed type is well formed under an empty kind environment. *)
 Definition closedT (tt: ty) : Prop
  := wfT nil tt.
 Hint Unfold closedT.
@@ -46,21 +130,27 @@ Hint Unfold closedT.
    to lift referenes to existing elements across the new ones. *)
 Fixpoint liftTT (d: nat) (tt: ty) : ty :=
   match tt with
-  |  TCon _     => tt
+  | TCon _     => tt
 
-  |  TVar ix
-     => if le_gt_dec d ix
-       then TVar (S ix)
-       else tt
+  | TVar ix
+    => if le_gt_dec d ix
+      then TVar (S ix)
+      else tt
 
   (* |  TForall t *)
   (*    => TForall (liftTT (S d) t) *)
 
-  |  TFun t1 t2
-     => TFun    (liftTT d t1) (liftTT d t2)
+  | TFun t1 t2
+    => TFun    (liftTT d t1) (liftTT d t2)
 
-  |  TExists t
-     => TExists (liftTT (S d) t)
+  | TExists t
+    => TExists (liftTT (S d) t)
+
+  | TNProd ts
+    => TNProd (map (liftTT d) ts)
+
+  | TNFun ts tRes
+    => TNFun (map (liftTT d) ts) (liftTT d tRes)
   end.
 Hint Unfold liftTT.
 
@@ -77,28 +167,36 @@ Ltac lift_cases
 (* Substitution for the outer-most binder in a type. *)
 Fixpoint substTT (d: nat) (u: ty) (tt: ty) : ty
  := match tt with
-    |  TCon _
-    => tt
+    | TCon _
+      => tt
 
     | TVar ix
-    => match nat_compare ix d with
-       | Eq => u
-       | Gt => TVar (ix - 1)
-       | _  => TVar  ix
-       end
+      => match nat_compare ix d with
+        | Eq => u
+        | Gt => TVar (ix - 1)
+        | _  => TVar  ix
+        end
 
     (* |  TForall t *)
     (* => TForall (substTT (S d) (liftTT 0 u) t) *)
 
-    |  TFun t1 t2
-       => TFun (substTT d u t1) (substTT d u t2)
+    | TFun t1 t2
+      => TFun (substTT d u t1) (substTT d u t2)
 
-    |  TExists t
-       => TExists (substTT (S d) (liftTT 0 u) t)
+    | TExists t
+      => TExists (substTT (S d) (liftTT 0 u) t)
+
+    | TNProd ts
+      => TNProd (map (substTT d u) ts)
+
+    | TNFun ts tRes
+      => TNFun (map (substTT d u) ts) (substTT d u tRes)
   end.
 
 
 (********************************************************************)
+(* PMK: TODO -- now, types can contain lists, believe we need to *)
+(* provide custom induction scheme or use one generated by Coq's Scheme.  *)
 (* Changing the order of lifting. *)
 Lemma liftTT_liftTT
  :  forall n n' t
@@ -124,7 +222,16 @@ Proof.
  simpl.
  assert (S (n + n') = (S n) + n'). omega. rewrite H.
  rewrite IHt. auto.
-Qed.
+
+ Case "TNProd".
+ simpl.
+ apply f_equal.
+ repeat (rewrite map_map).
+ eapply map_ext.
+ intros.
+ repeat (unfold liftTT; lift_cases; intros).
+Abort.
+(* Qed. *)
 
 
 (* Lifting then substituting at the same index doesn't do anything.
