@@ -38,10 +38,20 @@ Inductive KIND : kienv -> ty -> ki -> Prop :=
 
  | KINProd
    : forall ke ts,
-     Forall (KIND ke) ts KStar
-     -> KIND ke (TNProd ts) KStar.
+     Forall (fun t => KIND ke t KStar) ts
+     -> KIND ke (TNProd ts) KStar
+
+ | KINFun : forall ke ts tRes,
+     KIND ke tRes KStar
+     -> Forall (fun t => KIND ke t KStar) ts
+     -> KIND ke (TNFun ts tRes) KStar.
 
 Hint Constructors KIND.
+
+Ltac inverts_kind :=
+  match goal with
+  | [ H1 : KIND _ _ _ |- _ ] => inverts keep H1
+  end.
 
 
 (********************************************************************)
@@ -49,10 +59,28 @@ Hint Constructors KIND.
 Lemma kind_wfT
  :  forall ke t k
  ,  KIND ke t k
- -> wfT  ke t.
+ -> wfT ke t.
 Proof.
  intros. gen ke k.
- induction t; intros; inverts H; simpl; eauto.
+ induction t; intros; inverts H; simpl; eauto;
+   try inverts_kind; eauto; repeat constructor; eauto.
+
+ Case "TNProd".
+ inverts keep H4. eauto.
+ apply Forall_forall; intros.
+ pose proof (Forall_in _ _ _ H2 H); simpl in *.
+ eapply H3. inverts keep H4.
+ pose proof (Forall_in _ _ _ H8 H); simpl in *.
+ eassumption.
+
+ Case "TNFun".
+ inverts keep H7; eauto.
+ apply Forall_forall; intros.
+ pose proof (Forall_in _ _ _ H2 H); simpl in *.
+ eapply H3.
+ inverts keep H7.
+ pose proof (Forall_in _ _ _ H9 H); simpl in *.
+ eassumption.
 Qed.
 
 
@@ -76,7 +104,8 @@ Lemma liftTT_insert
  -> KIND (insert ix k2 ke) (liftTT ix t) k1.
 Proof.
  intros. gen ix ke k1.
- induction t; intros; simpl; inverts H; eauto.
+ induction t; intros; simpl; inverts H; eauto;
+   simpl; try destruct k1.
 
  Case "TVar".
   lift_cases; intros; auto.
@@ -90,6 +119,33 @@ Proof.
   apply KIExists.
   rewrite insert_rewind.
   apply IHt. auto.
+
+  Case "TNProd".
+  apply KINProd; eauto.
+  apply KINProd; eauto.
+  inverts_kind. inverts keep H4.
+  apply Forall_cons.
+  apply H1; assumption.
+  rewrite Forall_forall in H2.
+  rewrite Forall_forall; intros.
+  apply map_in_exists in H. destruct H as [y  [YX0  INY]].
+  specialize (H2 _ INY).
+  rewrite <- YX0. apply H2.
+  rewrite Forall_forall in H6; eauto.
+
+  Case "TNFun".
+  apply KINFun. inverts_kind. apply IHt; eauto.
+  apply Forall_nil.
+  inverts_kind. inverts keep H6.
+  apply KINFun; eauto.
+  apply Forall_cons.
+  apply H1; assumption.
+  rewrite Forall_forall in H2.
+  rewrite Forall_forall; intros.
+  apply map_in_exists in H. destruct H as [y  [YX0  INY]].
+  specialize (H2 _ INY).
+  rewrite <- YX0. apply H2.
+  rewrite Forall_forall in H6; eauto.
 Qed.
 
 

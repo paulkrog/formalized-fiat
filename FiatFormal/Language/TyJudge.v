@@ -25,6 +25,28 @@ Inductive TYPE : kienv -> tyenv -> exp -> ty -> Prop :=
    -> TYPE ke te x2 t11
    -> TYPE ke te (XApp x1 x2) t12
 
+ | TYTup
+   : forall ke te xs ts,
+     Forall2 (TYPE ke te) xs ts
+     -> TYPE ke te (XTup xs) (TNProd ts)
+
+ | TYNFun
+   : forall ke te x ts tRes,
+     TYPE ke (te >< ts) x tRes
+     -> TYPE ke te (XNFun ts x) (TNFun ts tRes)
+
+ | TYProj
+   : forall ke te n x ts tRes,
+     TYPE ke te x (TNProd ts)
+     -> get n ts = Some tRes
+     -> TYPE ke te (XProj n x) tRes
+
+ | TYNApp
+   : forall ke te x xArgs ts tRes,
+     TYPE ke te x (TNFun ts tRes)
+     -> Forall2 (TYPE ke te) xArgs ts
+     -> TYPE ke te (XNApp x xArgs) tRes
+
  (* | TYLAM *)
  (*   :  forall ke te x1 t1 *)
  (*   ,  TYPE (ke :> KStar) (liftTE 0 te) x1        t1 *)
@@ -64,27 +86,27 @@ Inductive TYPEPROG : kienv -> tyenv -> prog -> ty -> Prop :=
 Ltac invert_adt_type :=
   repeat
     (match goal with
-     | [ H : TYPEADT _ _ ?a _ |- _ ] => destruct a; inverts H
+     | [ H : TYPEADT _ _ ?a _ |- _ ] => destruct a; inverts keep H
      end).
 
 Ltac invert_exp_type :=
   repeat
     (match goal with
-     | [ H : TYPE _ _ _ _ |- _] => inverts H
+     | [ H : TYPE _ _ _ _ |- _] => inverts keep H
     end).
 
 Ltac invert_prog_type :=
   repeat
     (match goal with
-     | [ H : TYPEPROG _ _ _ _ |- _] => inverts H
+     | [ H : TYPEPROG _ _ _ _ |- _] => inverts keep H
     end).
 
 Ltac inverts_type :=
   repeat
     (match goal with
-     | [ H : TYPE _ _ _ _ |- _ ] => inverts H
-     | [ H : TYPEADT _ _ _ _ |- _ ] => inverts H
-     | [ H : TYPEPROG _ _ _ _ |- _ ] => inverts H
+     | [ H : TYPE _ _ _ _ |- _ ] => inverts keep H
+     | [ H : TYPEADT _ _ _ _ |- _ ] => inverts keep H
+     | [ H : TYPEPROG _ _ _ _ |- _ ] => inverts keep H
      end).
 
 (* ----------------------------------------------------- *)
@@ -103,6 +125,10 @@ Proof.
 
  Case "XLam".
   eapply IHx1 in H4. inverts H4. auto.
+
+  Case "XTup".
+
+  apply KINProd.
 Qed.
 
 

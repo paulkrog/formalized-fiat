@@ -18,4 +18,10 @@ Require Import FiatFormal.Tactics.LibTactics.
 (*   ex_spec. *)
 
 (* Tactic Notation "gen" ident(I1) ident(I2) ident(I3) ident(I4) ident(I5) ident(I6) ident(I7) ident(I8) ident(I9) ident(I10) := *)
-(*   gen I10; gen I9; gen I8; gen I7; gen I6; gen I5; gen I4; gen I3; gen I2; gen I1. *)
+(*   gen I10; gen I9; gen I8; gen I7; gen I6; gen I5; gen I4; gen I3; *)
+(*   gen I2; gen I1. *)
+
+(* Ltac inverts_kind := *)
+(*   match goal with *)
+(*   | [ H1 : KIND _ _ _ _ |- _ ] => inverts keep H1 *)
+(*   end. *)

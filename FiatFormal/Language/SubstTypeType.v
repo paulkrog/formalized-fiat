@@ -40,6 +40,24 @@ Proof.
   rewrite delete_rewind.
   eapply IHt1; eauto.
   apply liftTT_weaken. auto.
+
+  Case "TNProd".
+  apply KINProd.
+  apply Forall_forall; intros.
+  apply map_in_exists in H0. destruct H0 as [y  [YX0  INY]].
+  rewrite Forall_forall in H.
+  specialize (H _ INY).
+  rewrite <- YX0. eapply H.
+  nforall; eauto. eassumption. assumption.
+
+  Case "TNFun".
+  apply KINFun. eapply IHt1; eassumption.
+  apply Forall_forall; intros.
+  apply map_in_exists in H0. destruct H0 as [y  [YX0  INY]].
+  rewrite Forall_forall in H.
+  specialize (H _ INY).
+  rewrite <- YX0. eapply H; try eassumption.
+  nforall; eauto.
 Qed.
 
 
