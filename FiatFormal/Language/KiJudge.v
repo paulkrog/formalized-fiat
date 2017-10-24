@@ -34,7 +34,12 @@ Inductive KIND : kienv -> ty -> ki -> Prop :=
  | KIExists
    : forall ke t,
      KIND (ke :> KStar) t KStar
-     -> KIND ke (TExists t) KStar.
+     -> KIND ke (TExists t) KStar
+
+ | KINProd
+   : forall ke ts,
+     Forall (KIND ke) ts KStar
+     -> KIND ke (TNProd ts) KStar.
 
 Hint Constructors KIND.
 

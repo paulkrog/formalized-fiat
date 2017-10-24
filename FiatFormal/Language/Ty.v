@@ -1,7 +1,10 @@
 
 Require Export FiatFormal.Language.Ki.
 
-
+(* PMK: what I learned from writing ty_ind by hand: *)
+(* No mutual induction needed in proof of ty_ind.
+*)
+Unset Elimination Schemes.
 (* Type Expressions *)
 Inductive ty  : Type :=
  | TCon    : nat -> ty             (* Data type constructor. *)
@@ -12,11 +15,60 @@ Inductive ty  : Type :=
  | TExists : ty -> ty
  | TNProd   : list ty -> ty
  | TNFun    : list ty -> ty -> ty.
-(* Scheme ty_list_rec := Induction for ty Sort Type *)
-(* with list_ty_rec := Induction for list Sort Type. *)
-(* Print ty_mutind. *)
-(* Think need to write my own *)
 
+Theorem ty_ind :
+  forall
+    (PT : ty -> Prop),
+    (forall n, PT (TCon n))
+    -> (forall n, PT (TVar n))
+    -> (forall t1 t2, PT t1 -> PT t2 -> PT (TFun t1 t2))
+    -> (forall t, PT t -> PT (TExists t))
+    -> (forall ts, Forall PT ts -> PT (TNProd ts))
+    -> (forall ts tRes, Forall PT ts -> PT tRes -> PT (TNFun ts tRes))
+    (* -> (Forall PT nil) *)
+    (* -> (forall t ts, PT t -> Forall PT ts -> Forall PT (ts :> t)) *)
+    -> forall t, PT t.
+Proof.
+  intros PT.
+  intros tcon tvar tfun texists tnprod tnfun.
+  (* refine (fix IHT t : PT t := _). *)
+  refine (fix IHT t : PT t := _).
+          (* with IHL l : Forall PT l := _ *)
+          (*                               for IHT). *)
+  intros.
+  case t; intros.
+  Case "TCon".
+  apply tcon.
+  Case "TVar".
+  apply tvar.
+  Case "TFun".
+  Guarded.
+  apply tfun. apply IHT. apply IHT. Guarded.
+  Case "TExists".
+  apply texists. apply IHT. Guarded.
+  Case "TNProd".
+  apply tnprod. induction l. apply Forall_nil. apply Forall_cons. apply IHT. Guarded. apply IHl. Guarded.
+
+(* remember l. induction l. apply IHL. Guarded. apply IHL. Guarded. *)
+  Case "TNFun".
+  apply tnfun.  induction l. apply Forall_nil. apply Forall_cons. apply IHT. Guarded. apply IHl. Guarded.
+
+(* remember l. induction l. apply IHL. apply IHL. Guarded. *)
+  apply IHT.
+  Guarded.
+  (* Case "LIST". *)
+  (* induction l; intros. *)
+  (* apply Forall_nil. Guarded. *)
+  (* apply Forall_cons. Focus 2. apply IHl. Guarded. *)
+  (* apply IHT. Guarded. *)
+  (* apply IHL. *)
+Qed.
+(*   remember l. *)
+(*   case l0; intros. *)
+(*   apply IHL. Guarded. *)
+(*   remember l. induction l. apply IHL. apply IHL. *)
+(* Qed. *)
+Unset Elimination Schemes.
 
 (********************************************************************)
 (* Mutual induction principle for expressions.
@@ -224,14 +276,19 @@ Proof.
  rewrite IHt. auto.
 
  Case "TNProd".
- simpl.
- apply f_equal.
+ simpl. apply f_equal.
  repeat (rewrite map_map).
- eapply map_ext.
- intros.
- repeat (unfold liftTT; lift_cases; intros).
-Abort.
-(* Qed. *)
+ assert (S (n + n') = (S n) + n'). omega. rewrite H0.
+ apply map_ext_in; intros.
+ apply (Forall_in _ _ _ H H1).
+
+ Case "TNFun".
+ simpl. apply f_equal2; auto.
+ repeat (rewrite map_map).
+ assert (S (n + n') = (S n) + n'). omega. rewrite H0.
+ apply map_ext_in; intros.
+ apply (Forall_in _ _ _ H H1).
+Qed.
 
 
 (* Lifting then substituting at the same index doesn't do anything.
@@ -266,6 +323,21 @@ Proof.
   Case "TExists".
   simpl.
   rewrite IHt1. auto.
+
+  Case "TNProd".
+  simpl. apply f_equal.
+  repeat rewrite (map_map).
+  rewrite <- map_id.
+  apply map_ext_in; intros.
+  apply (Forall_in _ _ _ H H0).
+
+  Case "TNFun".
+  simpl. apply f_equal2.
+  repeat rewrite (map_map).
+  rewrite <- map_id.
+  apply map_ext_in; intros.
+  apply (Forall_in _ _ _ H H0).
+  apply IHt1.
 Qed.
 
 
@@ -297,6 +369,19 @@ Proof.
   simpl.
   rewrite (IHt1 (S n) n'). simpl.
   rewrite (liftTT_liftTT 0 n). auto.
+
+  Case "TNProd".
+  simpl. apply f_equal.
+  repeat rewrite (map_map).
+  apply map_ext_in; intros.
+  apply (Forall_in _ _ _ H H0).
+
+  Case "TNFun".
+  simpl. apply f_equal2.
+  repeat rewrite (map_map).
+  apply map_ext_in; intros.
+  apply (Forall_in _ _ _ H H0).
+  apply IHt1.
 Qed.
 
 
@@ -328,6 +413,19 @@ Proof.
    simpl. f_equal.
    rewrite (IHt1 (S n) n'). f_equal.
    simpl. rewrite (liftTT_liftTT 0 (n + n')). auto.
+
+   Case "TNProd".
+   simpl. apply f_equal.
+   repeat rewrite (map_map).
+   apply map_ext_in; intros.
+   apply (Forall_in _ _ _ H H0).
+
+   Case "TNFun".
+   simpl. apply f_equal2.
+   repeat rewrite (map_map).
+   apply map_ext_in; intros.
+   apply (Forall_in _ _ _ H H0).
+   apply IHt1.
 Qed.
 
 
@@ -361,4 +459,17 @@ Proof.
    rewrite (IHt1 (S n) m). f_equal.
    simpl. rewrite (liftTT_substTT 0 (n + m)). auto.
    simpl. rewrite (liftTT_liftTT 0 n). auto.
+
+   Case "TNProd".
+   simpl. apply f_equal.
+   repeat rewrite (map_map).
+   apply map_ext_in; intros.
+   apply (Forall_in _ _ _ H H0).
+
+   Case "TNFun".
+   simpl. apply f_equal2.
+   repeat rewrite (map_map).
+   apply map_ext_in; intros.
+   apply (Forall_in _ _ _ H H0).
+   apply IHt1.
 Qed.
