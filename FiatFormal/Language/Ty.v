@@ -4,22 +4,37 @@ Require Export FiatFormal.Language.Ki.
 (* PMK: what I learned from writing ty_ind by hand: *)
 (* No mutual induction needed in proof of ty_ind.
 *)
+
+
+(* Algebraic Data Type Constructors *)
+Inductive tycon : Type :=
+ | TyConData   : nat -> tycon.
+Hint Constructors tycon.
+
+Fixpoint tycon_beq t1 t2 :=
+  match t1, t2 with
+  | TyConData n1, TyConData n2 => beq_nat n1 n2
+  end.
+
+
 Unset Elimination Schemes.
 (* Type Expressions *)
 Inductive ty  : Type :=
- | TCon    : nat -> ty             (* Data type constructor. *)
+ | TCon    : tycon -> ty         (* Data type constructor. *)
  | TVar    : nat -> ty             (* deBruijn index. *)
- (* | TForall : ty  -> ty           (* Type variable binding. *) *)
- | TFun    : ty  -> ty -> ty     (* Function type constructor. *)
+ (* | TForall : ty  -> ty       (* Type variable binding. *) *)
+ | TFun    : ty  -> ty -> ty      (* Function type constructor. *)
 
  | TExists : ty -> ty
  | TNProd   : list ty -> ty
  | TNFun    : list ty -> ty -> ty.
 
+Hint Constructors ty.
+
 Theorem ty_ind :
   forall
     (PT : ty -> Prop),
-    (forall n, PT (TCon n))
+    (forall tc, PT (TCon tc))
     -> (forall n, PT (TVar n))
     -> (forall t1 t2, PT t1 -> PT t2 -> PT (TFun t1 t2))
     -> (forall t, PT t -> PT (TExists t))
@@ -70,69 +85,105 @@ Qed.
 (* Qed. *)
 Unset Elimination Schemes.
 
-(********************************************************************)
-(* Mutual induction principle for expressions.
-   As expressions are indirectly mutually recursive with lists,
-   Coq's Combined scheme command won't make us a strong enough
-   induction principle, so we need to write it out by hand. *)
+(* Data Constructors *)
+Inductive datacon : Type :=
+ | DataCon    : nat -> datacon.
+Hint Constructors datacon.
 
-(* Theorem exp_mutind *)
-(*  : forall *)
-(*     (PX : exp -> Prop) *)
-(*     (PA : alt -> Prop) *)
-(*  ,  (forall n,                                PX (XVar n)) *)
-(*  -> (forall t  x1,   PX x1                 -> PX (XLam t x1)) *)
-(*  -> (forall x1 x2,   PX x1 -> PX x2        -> PX (XApp x1 x2)) *)
-(*  -> (forall dc xs,            Forall PX xs -> PX (XCon dc xs)) *)
-(*  -> (forall x  aa,   PX x  -> Forall PA aa -> PX (XCase x aa)) *)
-(*  -> (forall dc ts x, PX x                  -> PA (AAlt dc ts x)) *)
-(*  ->  forall x, PX x. *)
-(* Proof. *)
-(*  intros PX PA. *)
-(*  intros var lam app con case alt. *)
-(*  refine (fix  IHX x : PX x := _ *)
-(*          with IHA a : PA a := _ *)
-(*          for  IHX). *)
 
-(*  (* expressions *) *)
-(*  case x; intros. *)
+Fixpoint datacon_beq t1 t2 :=
+  match t1, t2 with
+  | DataCon n1, DataCon n2 => beq_nat n1 n2
+  end.
 
-(*  Case "XVar". *)
-(*   apply var. *)
 
-(*  Case "XLam". *)
-(*   apply lam. *)
-(*    apply IHX. *)
+(* Definitions.
+   Carries meta information about type and data constructors. *)
+Inductive def  : Type :=
+ (* Definition of a data type constructor *)
+ | DefDataType
+   :  tycon        (* Name of data type constructor *)
+   -> list datacon (* Data constructors that belong to this type *)
+   -> def
 
-(*  Case "XApp". *)
-(*   apply app. *)
-(*    apply IHX. *)
-(*    apply IHX. *)
+ (* Definition of a data constructor *)
+ | DefData
+   :  datacon      (* Name of data constructor *)
+   -> list ty      (* Types of arguments *)
+   -> ty           (* Type  of constructed data *)
+   -> def.
+Hint Constructors def.
 
-(*  Case "XCon". *)
-(*   apply con. *)
-(*    induction l; intuition. *)
 
-(*  Case "XCase". *)
-(*   apply case. *)
-(*    apply IHX. *)
-(*    induction l; intuition. *)
+(* Definition environment.
+   Holds the definitions of all current type and data constructors. *)
+Definition defs  := list def.
 
-(*  (* alternatives *) *)
-(*  case a; intros. *)
 
-(*  Case "XAlt". *)
-(*   apply alt. *)
-(*    apply IHX. *)
-(* Qed. *)
+(* Lookup the def of a given type constructor.
+   Returns None if it's not in the list. *)
+Fixpoint getTypeDef (tc: tycon) (ds: defs) : option def :=
+ match ds with
+ | ds' :> DefDataType tc' _ as d
+ => if tycon_beq tc tc'
+     then  Some d
+     else  getTypeDef tc ds'
 
-Hint Constructors ty.
+ | ds' :> _ => getTypeDef tc ds'
+ | Empty    => None
+ end.
+
+
+(* Lookup the def of a given data constructor.
+   Returns None if it's not in the list. *)
+Fixpoint getDataDef (dc: datacon) (ds: defs) : option def :=
+ match ds with
+ | ds' :> DefData dc' _ _ as d
+ => if datacon_beq dc dc'
+     then  Some d
+     else  getDataDef dc ds'
+
+ | ds' :> _ => getDataDef dc ds'
+ | Empty    => None
+ end.
+
+
+(* Boolean equality for data constructors. *)
+Lemma datacon_beq_eq
+ :  forall dc dc'
+ ,  true = datacon_beq dc dc'
+ -> dc = dc'.
+Proof.
+ intros.
+ destruct dc.
+ destruct dc'.
+ simpl in H.
+ apply beq_nat_eq in H.
+ auto.
+Qed.
+
+
+(* Boolean negation for data constructors. *)
+Lemma datacon_beq_false
+ :  forall dc
+ ,  false = datacon_beq dc dc
+ -> False.
+Proof.
+ intro.
+ destruct dc.
+ simpl.
+ intros.
+  induction n.
+  simpl in H. false.
+  simpl in H. auto.
+Qed.
 
 
 (********************************************************************)
 Inductive wfT : kienv -> ty -> Prop :=
-| WfT_TCon : forall ke n,
-    wfT ke (TCon n)
+| WfT_TCon : forall ke tc,
+    getTypeDef tc ds = Some (DataTypeDef tc dcs)
+    wfT ke (TCon tc)
 | WfT_TVar : forall ke i k,
     get i ke = Some k
     -> wfT ke (TVar i)
@@ -149,8 +200,15 @@ Inductive wfT : kienv -> ty -> Prop :=
     -> wfT ke (TNFun ts tRes)
 | WfT_TExists : forall ke t,
     wfT (ke :> KStar) t
-    -> wfT ke (TExists t).
+    -> wfT ke (TExists t)
 
+with wfDef : kienv -> def -> Prop :=
+     | WfD : forall ts tRes dc ke,
+         wfT ke tRes
+         -> Forall (wfT ke) ts
+         -> wfDef ke (DefData dc ts tRes).
+
+Hint Constructors wfDef.
 Hint Constructors wfT.
 
 (* Similar to wfX, wfT has been made into an Inductive datatype above *)

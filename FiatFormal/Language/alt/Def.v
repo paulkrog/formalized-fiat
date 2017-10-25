@@ -1,5 +1,5 @@
 
-Require Export Iron.Language.SimpleData.Ty.
+Require Export FiatFormal.Language.Ty.
 
 
 (* Data Constructors *)
@@ -14,17 +14,17 @@ Fixpoint datacon_beq t1 t2 :=
   end.
 
 
-(* Definitions. 
+(* Definitions.
    Carries meta information about type and data constructors. *)
 Inductive def  : Type :=
  (* Definition of a data type constructor *)
- | DefDataType 
+ | DefDataType
    :  tycon        (* Name of data type constructor *)
    -> list datacon (* Data constructors that belong to this type *)
    -> def
 
  (* Definition of a data constructor *)
- | DefData 
+ | DefData
    :  datacon      (* Name of data constructor *)
    -> list ty      (* Types of arguments *)
    -> ty           (* Type  of constructed data *)
@@ -39,10 +39,10 @@ Definition defs  := list def.
 
 (* Lookup the def of a given type constructor.
    Returns None if it's not in the list. *)
-Fixpoint getTypeDef (tc: tycon) (ds: defs) : option def := 
- match ds with 
+Fixpoint getTypeDef (tc: tycon) (ds: defs) : option def :=
+ match ds with
  | ds' :> DefDataType tc' _ as d
- => if tycon_beq tc tc' 
+ => if tycon_beq tc tc'
      then  Some d
      else  getTypeDef tc ds'
 
@@ -51,12 +51,12 @@ Fixpoint getTypeDef (tc: tycon) (ds: defs) : option def :=
  end.
 
 
-(* Lookup the def of a given data constructor. 
+(* Lookup the def of a given data constructor.
    Returns None if it's not in the list. *)
-Fixpoint getDataDef (dc: datacon) (ds: defs) : option def := 
- match ds with 
+Fixpoint getDataDef (dc: datacon) (ds: defs) : option def :=
+ match ds with
  | ds' :> DefData dc' _ _ as d
- => if datacon_beq dc dc' 
+ => if datacon_beq dc dc'
      then  Some d
      else  getDataDef dc ds'
 
@@ -67,7 +67,7 @@ Fixpoint getDataDef (dc: datacon) (ds: defs) : option def :=
 
 (* Boolean equality for data constructors. *)
 Lemma datacon_beq_eq
- :  forall dc dc' 
+ :  forall dc dc'
  ,  true = datacon_beq dc dc'
  -> dc = dc'.
 Proof.
@@ -82,8 +82,8 @@ Qed.
 
 (* Boolean negation for data constructors. *)
 Lemma datacon_beq_false
- :  forall dc 
- ,  false = datacon_beq dc dc 
+ :  forall dc
+ ,  false = datacon_beq dc dc
  -> False.
 Proof.
  intro.
@@ -94,4 +94,3 @@ Proof.
   simpl in H. false.
   simpl in H. auto.
 Qed.
-
