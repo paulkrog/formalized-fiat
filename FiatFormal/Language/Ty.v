@@ -180,9 +180,26 @@ Qed.
 
 
 (********************************************************************)
+Inductive simpleType : ty -> Prop :=
+| Simp_TCon : forall tc,
+    simpleType (TCon tc)
+| Simp_TFun : forall t1 t2,
+    simpleType t1
+    -> simpleType t2
+    -> simpleType (TFun t1 t2)
+| Simp_TNProd : forall ts,
+    Forall (simpleType) ts
+    -> simpleType (TNProd ts)
+| Simp_TNFun : forall ts tRes,
+    simpleType tRes
+    -> Forall (simpleType) ts
+    -> simpleType (TNFun ts tRes).
+
+Hint Constructors simpleType.
+
 Inductive wfT : kienv -> ty -> Prop :=
 | WfT_TCon : forall ke tc,
-    getTypeDef tc ds = Some (DataTypeDef tc dcs)
+    (* getTypeDef tc ds = Some (DataTypeDef tc dcs) *)
     wfT ke (TCon tc)
 | WfT_TVar : forall ke i k,
     get i ke = Some k
@@ -202,7 +219,7 @@ Inductive wfT : kienv -> ty -> Prop :=
     wfT (ke :> KStar) t
     -> wfT ke (TExists t)
 
-with wfDef : kienv -> def -> Prop :=
+with wfDef : kienv -> def -> Prop := (* unused! *)
      | WfD : forall ts tRes dc ke,
          wfT ke tRes
          -> Forall (wfT ke) ts
@@ -264,6 +281,54 @@ Fixpoint liftTT (d: nat) (tt: ty) : ty :=
   end.
 Hint Unfold liftTT.
 
+Lemma simpleLiftEq :
+  forall t d,
+    simpleType t
+    -> t = liftTT d t.
+Proof.
+  intros.
+  induction t; try inverts H; intros; auto.
+  Case "TFun".
+  spec IHt1 H2.
+  spec IHt2 H3. simpl.
+  rewrite <- IHt1.
+  rewrite <- IHt2. auto.
+  Case "TNProd". (* may be cleaner, shorter way *)
+  simpl. f_equal.
+  pose proof (Forall_mp _ _ _ H0 H2).
+  repeat nforall.
+  apply Forall2_eq.
+  apply Forall2_map_right.
+  apply Forall2_impl_in with (R1:=eq).
+  intros; subst.
+  apply H; auto.
+  induction ts; eauto.
+  apply Forall2_cons; auto.
+  Case "TNFun". (* may be cleaner, shorter way *)
+  simpl. f_equal; auto.
+  pose proof (Forall_mp _ _ _ H0 H4).
+  repeat nforall.
+  apply Forall2_eq.
+  apply Forall2_map_right.
+  apply Forall2_impl_in with (R1:=eq).
+  intros; subst.
+  apply H; auto.
+  induction ts; eauto.
+  apply Forall2_cons; auto.
+Qed.
+Hint Rewrite simpleLiftEq.
+
+Lemma simpleLiftMapEq :
+  forall ts d,
+    Forall simpleType ts
+    -> ts = map (liftTT d) ts.
+Proof.
+  intros. induction ts; try inverts H; intros; auto.
+  spec IHts H3.
+  simpl. rewrite <- IHts.
+  assert (a = liftTT d a). apply simpleLiftEq; auto.
+  rewrite <- H; auto.
+Qed.
 
 (* Tactic to help deal with lifting functions. *)
 Ltac lift_cases
@@ -303,6 +368,53 @@ Fixpoint substTT (d: nat) (u: ty) (tt: ty) : ty
       => TNFun (map (substTT d u) ts) (substTT d u tRes)
   end.
 
+Lemma simpleSubstEq :
+  forall t1 t2 d,
+    simpleType t1
+    -> t1 = substTT d t2 t1.
+Proof.
+  intros.
+  induction t1; try inverts H; intros; simpl; auto.
+  Case "TFun".
+  spec IHt1_1 H2.
+  spec IHt1_2 H3. simpl.
+  rewrite <- IHt1_1.
+  rewrite <- IHt1_2. auto.
+  Case "TNProd".
+  f_equal.
+  pose proof (Forall_mp _ _ _ H0 H2).
+  repeat nforall.
+  apply Forall2_eq.
+  apply Forall2_map_right.
+  apply Forall2_impl_in with (R1:=eq).
+  intros; subst.
+  apply H; auto.
+  induction ts; eauto.
+  apply Forall2_cons; auto.
+  Case "TNFun". (* may be cleaner, shorter way *)
+  simpl. f_equal; auto.
+  pose proof (Forall_mp _ _ _ H0 H4).
+  repeat nforall.
+  apply Forall2_eq.
+  apply Forall2_map_right.
+  apply Forall2_impl_in with (R1:=eq).
+  intros; subst.
+  apply H; auto.
+  induction ts; eauto.
+  apply Forall2_cons; auto.
+Qed.
+
+Lemma simpleSubstMapEq :
+  forall ts t2 d,
+    Forall simpleType ts
+    -> ts = map (substTT d t2) ts.
+Proof.
+  intros. induction ts; try inverts H; intros; simpl; auto.
+  spec IHts H3.
+  simpl. rewrite <- IHts.
+  assert (a = substTT d t2 a). apply simpleSubstEq; auto.
+  rewrite <- H; auto.
+Qed.
 
 (********************************************************************)
 (* PMK: TODO -- now, types can contain lists, believe we need to *)

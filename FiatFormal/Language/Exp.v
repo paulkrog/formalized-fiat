@@ -15,9 +15,27 @@ Inductive exp : Type :=
  | XTup   : list exp -> exp
  | XProj  : nat -> exp -> exp
  | XNFun  : list ty -> exp -> exp
- | XNApp  : exp -> list exp -> exp.
+ | XNApp  : exp -> list exp -> exp
 
+ | XFix   : ty -> ty -> exp -> exp
+
+ (* Data Types *)
+ | XCon   : datacon -> list exp -> exp
+ | XMatch : exp     -> list alt -> exp
+
+ (* Alternatives *)
+with alt     : Type :=
+ | AAlt   : datacon -> list ty  -> exp -> alt.
+
+Hint Constructors alt.
 Hint Constructors exp.
+
+(* Get the data constructor of an alternative. *)
+Fixpoint dcOfAlt (aa: alt) : datacon :=
+ match aa with
+ | AAlt dc _ _ => dc
+ end.
+Hint Unfold dcOfAlt.
 
 (********************************************************************)
 (* Mutual induction principle for expressions.
@@ -25,55 +43,81 @@ Hint Constructors exp.
    Coq's Combined scheme command won't make us a strong enough
    induction principle, so we need to write it out by hand. *)
 
-(* Theorem exp_mutind *)
-(*  : forall *)
-(*     (PX : exp -> Prop) *)
-(*     (PA : alt -> Prop) *)
-(*  ,  (forall n,                                PX (XVar n)) *)
-(*  -> (forall t  x1,   PX x1                 -> PX (XLam t x1)) *)
-(*  -> (forall x1 x2,   PX x1 -> PX x2        -> PX (XApp x1 x2)) *)
-(*  -> (forall dc xs,            Forall PX xs -> PX (XCon dc xs)) *)
-(*  -> (forall x  aa,   PX x  -> Forall PA aa -> PX (XCase x aa)) *)
-(*  -> (forall dc ts x, PX x                  -> PA (AAlt dc ts x)) *)
-(*  ->  forall x, PX x. *)
-(* Proof. *)
-(*  intros PX PA. *)
-(*  intros var lam app con case alt. *)
-(*  refine (fix  IHX x : PX x := _ *)
-(*          with IHA a : PA a := _ *)
-(*          for  IHX). *)
+Theorem exp_mutind
+ : forall
+    (PX : exp -> Prop)
+    (PA : alt -> Prop)
+ ,  (forall n,                                PX (XVar n))
+ -> (forall t  x1,   PX x1                 -> PX (XLam t x1))
+ -> (forall x1 x2,   PX x1 -> PX x2        -> PX (XApp x1 x2))
+ -> (forall xs,      Forall PX xs         -> PX (XTup xs))
+ -> (forall n x,     PX x                 -> PX (XProj n x))
+ -> (forall ts x,    PX x                 -> PX (XNFun ts x))
+ -> (forall x xs,    PX x -> Forall PX xs  -> PX (XNApp x xs))
+ -> (forall t1 t2 x, PX x                 -> PX (XFix t1 t2 x))
+ -> (forall dc xs,   Forall PX xs         -> PX (XCon dc xs))
+ -> (forall x  aa,   PX x  -> Forall PA aa -> PX (XMatch x aa))
+ -> (forall dc ts x, PX x                 -> PA (AAlt dc ts x))
+ ->  forall x, PX x.
+Proof.
+  intros PX PA.
+  intros var lam app tup proj nfun napp ffix con mmatch alt.
+  refine (fix  IHX x : PX x := _
+            with IHA a : PA a := _
+                                   for  IHX).
 
-(*  (* expressions *) *)
-(*  case x; intros. *)
+  (* expressions *)
+  case x; intros.
 
-(*  Case "XVar". *)
-(*   apply var. *)
+  Case "XVar".
+  apply var.
 
-(*  Case "XLam". *)
-(*   apply lam. *)
-(*    apply IHX. *)
+  Case "XLam".
+  apply lam.
+  apply IHX.
 
-(*  Case "XApp". *)
-(*   apply app. *)
-(*    apply IHX. *)
-(*    apply IHX. *)
+  Case "XApp".
+  apply app.
+  apply IHX.
+  apply IHX.
 
-(*  Case "XCon". *)
-(*   apply con. *)
-(*    induction l; intuition. *)
+  Case "XTup".
+  apply tup.
+  induction l; intuition.
 
-(*  Case "XCase". *)
-(*   apply case. *)
-(*    apply IHX. *)
-(*    induction l; intuition. *)
+  Case "XProj".
+  apply proj.
+  apply IHX.
 
-(*  (* alternatives *) *)
-(*  case a; intros. *)
+  Case "XNFun".
+  apply nfun.
+  apply IHX.
 
-(*  Case "XAlt". *)
-(*   apply alt. *)
-(*    apply IHX. *)
-(* Qed. *)
+  Case "XNApp".
+  apply napp.
+  apply IHX.
+  induction l; intuition.
+
+  Case "XFix".
+  apply ffix.
+  apply IHX.
+
+  Case "XCon".
+  apply con.
+  induction l; intuition.
+
+  Case "XMatch".
+  apply mmatch.
+  apply IHX.
+  induction l; intuition.
+
+  (* alternatives *)
+  case a; intros.
+
+  Case "XAlt".
+  apply alt.
+  apply IHX.
+Qed.
 
 Inductive hasChoiceX : exp -> Prop :=
 .
@@ -114,7 +158,16 @@ Inductive wnfX : exp -> Prop :=
 
  | Wnf_XNFun
    : forall ts x,
-     wnfX (XNFun ts x).
+     wnfX (XNFun ts x)
+
+ | Wnf_XFix
+   : forall t1 t2 x,
+     wnfX (XFix t1 t2 x)
+
+ | Wnf_XCon
+   : forall dc xs,
+     Forall wnfX xs
+     -> wnfX (XCon dc xs).
 
 Hint Constructors wnfX.
 
@@ -141,8 +194,27 @@ Inductive wfX : kienv -> tyenv -> exp -> Prop :=
 | WfX_XNApp : forall ke te x xs,
     wfX ke te x
     -> Forall (wfX ke te) xs
-    -> wfX ke te (XNApp x xs).
+    -> wfX ke te (XNApp x xs)
+| WfX_XFix : forall ke te t1 t2 x,
+    wfT ke t1
+    -> wfT ke t2
+    -> wfX ke (te :> (TFun t1 t2) :> t1) x
+    -> wfX ke te (XFix t1 t2 x)
+| WfX_XCon : forall ke te dc xs,
+    Forall (wfX ke te) xs
+    -> wfX ke te (XCon dc xs)
+| WfX_XMatch : forall ke te x aa,
+    wfX ke te x
+    -> Forall (wfA ke te) aa
+    -> wfX ke te (XMatch x aa)
 
+with wfA : kienv -> tyenv -> alt -> Prop :=
+     | WfA_AAlt : forall ke te dc ds ts x tsArgs tRes,
+         getDataDef dc ds = Some (DefData dc tsArgs tRes)
+         -> wfX ke (te >< tsArgs) x
+         -> wfA ke te (AAlt dc ts x).
+
+Hint Constructors wfA.
 Hint Constructors wfX.
 
 (* PMK: wfX has been made an Inductive data type above *)
@@ -179,6 +251,7 @@ Hint Constructors value.
 
 (********************************************************************)
 (* Lift type indices in expressions. *)
+(* Note: only ever need lift of size 1 at a time *)
 Fixpoint liftTX (d: nat) (xx: exp) : exp :=
   match xx with
   | XVar _     => xx
@@ -207,7 +280,21 @@ Fixpoint liftTX (d: nat) (xx: exp) : exp :=
 
   | XNApp x xs
     => XNApp (liftTX d x) (map (liftTX d) xs)
- end.
+
+  | XFix t1 t2 x
+    => XFix (liftTT d t1) (liftTT d t2) (liftTX d x)
+
+  | XCon dc xs
+    => XCon dc (map (liftTX d) xs)
+
+  | XMatch x aa
+    => XMatch (liftTX d x) (map (liftTA d) aa)
+  end
+
+with liftTA (d: nat) (a : alt) : alt :=
+       match a with
+       | AAlt dc ts x => AAlt dc (map (liftTT d) ts) (liftTX d x)
+       end.
 
 
 (* PMK: Changed to include parameter for amount to lift by *)
@@ -235,15 +322,29 @@ Fixpoint liftXX (n: nat) (d: nat) (xx: exp) : exp :=
   | XTup xs
     => XTup (map (liftXX n d) xs)
 
-  | XProj n x
-    => XProj n (liftXX n d x)
+  | XProj n' x
+    => XProj n' (liftXX n d x)
 
   | XNFun ts x
     => XNFun ts (liftXX n (d + length ts) x)
 
   | XNApp x xs
     => XNApp (liftXX n d x) (map (liftXX n d) xs)
- end.
+
+  | XFix t1 t2 x
+    => XFix t1 t2 (liftXX n (S (S d)) x)
+
+  | XCon dc xs
+    => XCon dc (map (liftXX n d) xs)
+
+  | XMatch x aa
+    => XMatch (liftXX n d x) (map (liftXA n d) aa)
+  end
+
+with liftXA (n: nat) (d: nat) (a: alt) : alt :=
+       match a with
+       | AAlt dc ts x => AAlt dc ts (liftXX n (d + length ts) x)
+       end.
 
 
 (********************************************************************)
@@ -277,7 +378,20 @@ Fixpoint substTX (d: nat) (u: ty) (xx: exp) : exp :=
 
   | XNApp x xs
     => XNApp (substTX d u x) (map (substTX d u) xs)
- end.
+
+  | XFix t1 t2 x
+    => XFix (substTT d u t1) (substTT d u t2) (substTX d u x)
+
+  | XCon dc xs
+    => XCon dc (map (substTX d u) xs)
+
+  | XMatch x aa
+    => XMatch (substTX d u x) (map (substTA d u) aa)
+  end
+with substTA (d: nat) (u: ty) (a: alt) : alt :=
+       match a with
+       | AAlt dc ts x => AAlt dc (map (substTT d u) ts) (substTX d u x)
+       end.
 
 
 (* Substitution of expressions in expressions. *)
@@ -317,9 +431,216 @@ Fixpoint substXX (d: nat) (u: exp) (xx: exp) : exp :=
 
   | XNApp x xs
     => XNApp (substXX d u x) (map (substXX d u) xs)
-  end.
 
-(* ------------------------------------------------------------ *)
+  | XFix t1 t2 x
+    => XFix t1 t2 (substXX (S (S d)) (liftXX 2 0 u) x)
+
+  | XCon dc xs
+    => XCon dc (map (substXX d u) xs)
+
+  | XMatch x aa
+    => XMatch (substXX d u x) (map (substXA d u) aa)
+  end
+with substXA (d: nat) (u: exp) (a: alt) : alt :=
+       match a with
+       | AAlt dc ts x => AAlt dc ts (substXX (d + length ts) (liftXX (length ts) 0 u) x)
+       end.
+
+(* The data constructor of an alternative is unchanged
+   by lifting. *)
+Lemma dcOfAlt_liftXA
+ : forall n d a
+ , dcOfAlt (liftXA n d a) = dcOfAlt a.
+Proof.
+ intros. destruct a. auto.
+Qed.
+Lemma dcOfAlt_liftTA
+ : forall d a
+ , dcOfAlt (liftTA d a) = dcOfAlt a.
+Proof.
+ intros. destruct a. auto.
+Qed.
+Lemma dcOfAlt_substXA
+  : forall d u a,
+    dcOfAlt (substXA d u a) = dcOfAlt a.
+Proof.
+  intros. destruct a. auto.
+Qed.
+Lemma dcOfAlt_substTA
+  : forall d t a,
+    dcOfAlt (substTA d t a) = dcOfAlt a.
+Proof.
+  intros. destruct a. auto.
+Qed.
+
+
+(* When we lift an expression by zero places,
+   then the expression is unchanged. *)
+Lemma liftXX_zero
+  : forall d x,
+    liftXX 0 d x = x.
+Proof.
+  intros. gen d.
+  induction x using exp_mutind with
+      (PA := fun a => forall d
+               ,  liftXA 0 d a = a);
+    rip; simpl;
+      try (solve [f_equal; rewritess; burn]).
+
+  Case "XVar".
+  lift_cases; burn.
+
+  Case "XTup".
+  nforall.
+  rewrite (map_ext_in (liftXX 0 d) id); auto.
+  rewrite map_id; auto.
+
+  Case "XNApp".
+  nforall.
+  rewrite (map_ext_in (liftXX 0 d) id); auto.
+  rewrite map_id; auto. rewrite IHx; auto.
+
+  Case "XCon".
+  nforall.
+  rewrite (map_ext_in (liftXX 0 d) id); auto.
+  rewrite map_id; auto.
+
+  Case "XMatch".
+  nforall.
+  rewrite (map_ext_in (liftXA 0 d) id); auto.
+  rewrite map_id. rewrite IHx; auto.
+Qed.
+
+(* Commutivity of expression lifting. *)
+Lemma liftXX_comm
+ : forall n m x d
+ , liftXX n d (liftXX m d x)
+ = liftXX m d (liftXX n d x).
+Proof.
+ intros. gen d.
+ induction x using exp_mutind with
+  (PA := fun a => forall d
+      ,  liftXA n d (liftXA m d a)
+      =  liftXA m d (liftXA n d a));
+   rip; simpl;
+   try (solve [f_equal; rewritess; burn]).
+
+ Case "XVar". (* disgusting *)
+ lift_cases. intros. intros. simpl. lift_cases. intros. lift_cases. intros. f_equal. omega.
+ intros. f_equal. omega. intros. lift_cases. intros; omega. intros; omega. intros.
+ simpl. lift_cases; intros; try omega. auto.
+ (* repeat (simpl; lift_cases; burn); *)
+ (*   solve [f_equal; omega]. *)
+
+ Case "XTup".
+ f_equal.
+ repeat (rewrite map_map).
+ rewrite Forall_forall in *.
+ rewrite (map_ext_in
+            (fun x0 => liftXX n d (liftXX m d x0))
+            (fun x0 => liftXX m d (liftXX n d x0))); burn.
+
+ Case "XNApp".
+ f_equal. apply IHx; auto.
+ repeat (rewrite map_map).
+ rewrite Forall_forall in *.
+ rewrite (map_ext_in
+            (fun x0 => liftXX n d (liftXX m d x0))
+            (fun x0 => liftXX m d (liftXX n d x0))); burn.
+
+ Case "XCon".
+ f_equal.
+ repeat (rewrite map_map).
+ rewrite Forall_forall in *.
+ rewrite (map_ext_in
+            (fun x0 => liftXX n d (liftXX m d x0))
+            (fun x0 => liftXX m d (liftXX n d x0))); burn.
+
+ Case "XMatch".
+ f_equal. burn.
+ rewrite map_map.
+ rewrite map_map.
+ rewrite Forall_forall in *.
+ rewrite (map_ext_in
+            (fun a1 => liftXA n d (liftXA m d a1))
+            (fun a1 => liftXA m d (liftXA n d a1))); burn.
+Qed.
+
+
+(* When consecutively lifting an expression, we can lift by one
+   more place in the first lifting and one less in the second. *)
+Lemma liftXX_succ
+ : forall n m d x
+ , liftXX (S n) d (liftXX m     d x)
+ = liftXX n     d (liftXX (S m) d x).
+Proof.
+  intros. gen d.
+  induction x using exp_mutind with
+      (PA := fun a => forall d
+               ,  liftXA (S n) d (liftXA  m    d a)
+                  =  liftXA n     d (liftXA (S m) d a));
+    rip; simpl;
+      try (solve [f_equal; rewritess; burn]).
+
+  Case "XVar".
+  repeat (simple; lift_cases; intros);
+    try (solve [f_equal; omega]).
+
+  Case "XTup".
+  f_equal.
+  repeat (rewrite map_map).
+  rewrite Forall_forall in *.
+  rewrite (map_ext_in
+             (fun x0 => liftXX (S n) d (liftXX m d x0))
+             (fun x0 => liftXX n d (liftXX (S m) d x0))); burn.
+
+  Case "XNApp".
+  f_equal. apply IHx; auto.
+  repeat (rewrite map_map).
+  rewrite Forall_forall in *.
+  rewrite (map_ext_in
+             (fun x0 => liftXX (S n) d (liftXX m d x0))
+             (fun x0 => liftXX n d (liftXX (S m) d x0))); burn.
+
+  Case "XCon".
+  f_equal.
+  repeat (rewrite map_map).
+  rewrite Forall_forall in *.
+  rewrite (map_ext_in
+             (fun x0 => liftXX (S n) d (liftXX m d x0))
+             (fun x0 => liftXX n d (liftXX (S m) d x0))); burn.
+
+  Case "XMatch".
+  f_equal. eauto.
+  repeat (rewrite map_map).
+  rewrite Forall_forall in *.
+  rewrite (map_ext_in
+             (fun x1 => liftXA (S n) d (liftXA m d x1))
+             (fun x1 => liftXA n d (liftXA (S m) d x1))); burn.
+Qed.
+
+
+(* We can collapse two consecutive lifting expressions by lifting
+   just once by the sum of the places, provided the lifting
+   occurs at depth zero. *)
+Lemma liftXX_plus
+ : forall n m x
+ , liftXX n 0 (liftXX m 0 x) = liftXX (n + m) 0 x.
+Proof.
+ intros. gen n.
+ induction m.
+  intros. rewrite liftXX_zero. nnat. burn.
+  intros.
+   rrwrite (n + S m = S n + m).
+   rewrite liftXX_comm.
+   rewrite <- IHm.
+   rewrite liftXX_comm.
+   rewrite liftXX_succ.
+   auto.
+Qed.
+
+
+(* -------------------------Existential----------------------------------- *)
 Definition substTADT (d : nat) (u : ty) (ad : adt) : adt :=
   match ad with
   | IADT r x s => IADT (substTT d u r) (substTX d u x) (substTT d u s)
