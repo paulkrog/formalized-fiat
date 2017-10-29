@@ -5,6 +5,15 @@ Require Import FiatFormal.Language.SubstTypeExp.
 Require Import FiatFormal.Language.SubstTypeType.
 Require Import FiatFormal.Language.TyJudge.
 
+Lemma In_Context :
+  forall C Val x,
+    exps_ctx Val C
+    -> @In exp x (C x).
+Proof.
+  intros.
+  induction H; auto.
+Qed.
+
 Lemma canonicalFormTFun :
   forall ds ke te t1 t2 x,
     TYPE ds ke te x (TFun t1 t2)
@@ -155,14 +164,14 @@ Proof.
  destruct STx2 as [x2'].
  left; exists (XApp x1 x2'). auto.
  SSCase "x2 hasChoice".
- nope.
+ (* nope. *) right; auto.
  destruct H as [STx1 | HCx1].
  SCase "x1 steps".
  destruct STx1 as [x1'].
  left; exists (XApp x1' x2).
  eapply (EsContext (fun xx => XApp xx x2)); auto.
  SCase "x1 hasChoice".
- nope.
+ (* nope. *) right; auto.
 
  Case "XTup".
  assert (Forall (fun x => wnfX x \/ (exists x', STEP x x') \/ hasChoiceX x) xs) as HWS.
@@ -184,7 +193,10 @@ Proof.
  lets D: step_context_XTup_exists H1 STx'.
  destruct D as [x'']. eauto.
  SCase "hasChoice x".
- nope.
+ (* nope. *)
+ right; apply HcTup.
+ apply Exists_exists. exists x'. rip.
+ eapply In_Context; eauto.
 
  Case "XProj".
  right. destruct (IHx ds); eauto.
@@ -200,7 +212,8 @@ Proof.
  left. dest x'. exists (XProj n x').
  eapply (EsContext (fun xx => XProj n xx)); eauto.
  SCase "x hasChoice".
- nope.
+ (* nope. *)
+ right; auto.
 
  Case "XNFun".
  left; eauto.
@@ -230,14 +243,18 @@ Proof.
  eapply (EsContext (fun xx => XNApp (XNFun ts x'') (C xx))).
  apply XcNApp2; eauto. auto.
  SCase "x' hasChoice".
- nope.
+ (* nope. *)
+ right; apply HcNApp2.
+ apply Exists_exists. exists x'. rip.
+ eapply In_Context; eauto.
  destruct H0 as [STx | HCx].
  left.
  dest x'.
  exists (XNApp x' xs); eauto.
  eapply (EsContext (fun xx => XNApp xx xs)); eauto.
  SCase "x hasChoice".
- nope.
+ (* nope. *)
+ right; eauto.
 
  Case "XFix".
  left; eauto.
@@ -263,7 +280,10 @@ Proof.
  lets D: step_context_XCon_exists H1 STx'.
  destruct D as [x'']. eauto.
  SCase "hasChoice x".
- nope.
+ (* nope. *)
+ right; apply HcCon.
+ apply Exists_exists. exists x'. rip.
+ eapply In_Context; eauto.
 
  Case "XMatch".
  right.
@@ -291,5 +311,6 @@ Proof.
  exists (XMatch x' aa).
  lets D: EsContext XcMatch; eauto.
  SCase "x hasChoice".
- nope.
+ (* nope. *)
+ right; auto.
 Qed.

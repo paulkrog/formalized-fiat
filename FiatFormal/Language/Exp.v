@@ -173,7 +173,48 @@ Proof.
 Qed.
 
 Inductive hasChoiceX : exp -> Prop :=
-.
+| HcLam  : forall t x,
+    hasChoiceX x
+    -> hasChoiceX (XLam t x)
+| HcApp1  : forall x1 x2,
+    hasChoiceX x1
+    -> hasChoiceX (XApp x1 x2)
+| HcApp2  : forall x1 x2,
+    hasChoiceX x2
+    -> hasChoiceX (XApp x1 x2)
+| HcTup   : forall xs,
+    Exists (hasChoiceX) xs
+    -> hasChoiceX (XTup xs)
+| HcProj  : forall x n,
+    hasChoiceX x
+    -> hasChoiceX (XProj n x)
+| HcNFun  : forall ts x,
+    hasChoiceX x
+    -> hasChoiceX (XNFun ts x)
+| HcNApp1  : forall x xs,
+    hasChoiceX x
+    -> hasChoiceX (XNApp x xs)
+| HcNApp2  : forall x xs,
+    Exists hasChoiceX xs
+    -> hasChoiceX (XNApp x xs)
+| HcFix    : forall t1 t2 x,
+    hasChoiceX x
+    -> hasChoiceX (XFix t1 t2 x)
+| HcCon    : forall dc xs,
+    Exists hasChoiceX xs
+    -> hasChoiceX (XCon dc xs)
+| HcMatch1  : forall x aa,
+    hasChoiceX x
+    -> hasChoiceX (XMatch x aa)
+| HcMatch2  : forall x aa,
+    Exists hasChoiceA aa
+    -> hasChoiceX (XMatch x aa)
+with hasChoiceA : alt -> Prop :=
+     | HcAlt : forall dc ts x,
+         hasChoiceX x
+         -> hasChoiceA (AAlt dc ts x).
+Hint Constructors hasChoiceX.
+Hint Constructors hasChoiceA.
 
 (* ADTs *)
 Inductive adt : Type :=
@@ -187,7 +228,13 @@ Inductive prog : Type :=
 Hint Constructors prog.
 
 Inductive hasChoiceP : prog -> Prop :=
-.
+| HcLet : forall ad p',
+    hasChoiceP p'
+    -> hasChoiceP (PLET ad p')
+| HcExp : forall x,
+    hasChoiceX x
+    -> hasChoiceP (PEXP x).
+Hint Constructors hasChoiceP.
 
 (* Weak normal forms cannot be reduced further by
    call-by-value evaluation. *)
