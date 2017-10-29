@@ -135,3 +135,34 @@ Proof.
   assert (te = delete 0 (te :> t2)). auto.
   rewrite H1. eapply subst_value_value_ix; eauto. eauto.
 Qed.
+
+
+(* Substitution of several expressions at once. *)
+Theorem subst_exp_exp_list
+  : forall ds ks te x1 xs t1 ts,
+    Forall2 (TYPE ds ks te) xs ts
+    -> TYPE ds ks (te >< ts) x1 t1
+    -> TYPE ds ks te (substXXs 0 xs x1) t1.
+Proof.
+ intros ds ks te x1 xs t1 ts HF HT.
+ gen ts ks x1.
+ induction xs; intros; invert_exp_type.
+
+ - Case "base case".
+   destruct ts.
+   + simpl. auto.
+   + nope.
+
+ - Case "step case".
+   simpl.
+   destruct ts.
+   + nope.
+   + inverts HF.
+     eapply IHxs.
+     * eauto.
+     * simpl in HT.
+       eapply subst_value_value.
+        eauto.
+        rrwrite (length xs = length ts).
+        eapply type_tyenv_weaken_append. auto.
+Qed.

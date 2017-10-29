@@ -6,11 +6,11 @@ Require Import FiatFormal.Language.SubstTypeType.
 
 
 Theorem subst_exp_prog_ix :
-  forall ke te t1 ix p t2 s,
+  forall ds ke te t1 ix p t2 s,
     get ix te = Some t1
-    -> TYPE ke (delete ix te) s t1
-    -> TYPEPROG ke te p t2
-    -> TYPEPROG ke (delete ix te) (substXP ix s p) t2.
+    -> TYPE ds ke (delete ix te) s t1
+    -> TYPEPROG ds ke te p t2
+    -> TYPEPROG ds ke (delete ix te) (substXP ix s p) t2.
 Proof.
   intros. gen s ix t1.
   induction H1; intros.
@@ -38,10 +38,10 @@ Proof.
 Qed.
 
 Theorem subst_exp_prog
-  : forall ke te t1 p t2 s,
-    TYPEPROG ke (te :> t1) p t2
-    -> TYPE ke te s t1
-    -> TYPEPROG ke te (substXP 0 s p) t2.
+  : forall ds ke te t1 p t2 s,
+    TYPEPROG ds ke (te :> t1) p t2
+    -> TYPE ds ke te s t1
+    -> TYPEPROG ds ke te (substXP 0 s p) t2.
 Proof.
   intros.
   assert (te = delete 0 (te :> t1)). auto.
@@ -50,11 +50,11 @@ Proof.
 Qed.
 
 Theorem subst_type_prog_ix
-  : forall ix ke kx S te p t,
+  : forall ds ix ke kx S te p t,
     get ix ke = Some kx
     -> KIND (delete ix ke) S kx
-    -> TYPEPROG ke te p t
-    -> TYPEPROG (delete ix ke) (substTE ix S te) (substTP ix S p) (substTT ix S t).
+    -> TYPEPROG ds ke te p t
+    -> TYPEPROG ds (delete ix ke) (substTE ix S te) (substTP ix S p) (substTT ix S t).
 Proof.
   intros. gen S ix kx.
   induction H1; intros.
@@ -102,10 +102,10 @@ Proof.
 Qed.
 
 Theorem subst_type_prog
-  : forall ke te X S p t,
-    TYPEPROG (ke :> X) te p t
+  : forall ds ke te X S p t,
+    TYPEPROG ds (ke :> X) te p t
     -> KIND ke S KStar
-    -> TYPEPROG ke (substTE 0 S te) (substTP 0 S p) (substTT 0 S t).
+    -> TYPEPROG ds ke (substTE 0 S te) (substTP 0 S p) (substTT 0 S t).
 Proof.
   intros.
   assert (ke = delete 0 (ke :> X)). auto.
@@ -116,17 +116,17 @@ Qed.
 
 (* Main lemma supporting preservation *)
 Theorem subst_ADT_prog :
-  forall X r kr t1 t2 x p,
-    TYPEPROG (nil :> X) (nil :> t1) p t2
+  forall ds X r kr t1 t2 x p,
+    TYPEPROG ds (nil :> X) (nil :> t1) p t2
     -> KIND nil r kr
-    -> TYPE nil nil x (substTT 0 r t1)
-    -> TYPEPROG nil nil (substXP 0 x (substTP 0 r p)) (substTT 0 r t2).
+    -> TYPE ds nil nil x (substTT 0 r t1)
+    -> TYPEPROG ds nil nil (substXP 0 x (substTP 0 r p)) (substTT 0 r t2).
 Proof.
-  intros X r kr t1 t2 x p HP HK HT.
+  intros ds X r kr t1 t2 x p HP HK HT.
   pose proof (subst_type_prog) as STP.
-  specialize (STP _ _ _ r _ _ HP).
+  specialize (STP _ _ _ _ r _ _ HP).
   pose proof
-       (subst_exp_prog nil nil (substTT 0 r t1) (substTP 0 r p) (substTT 0 r t2))
+       (subst_exp_prog ds nil nil (substTT 0 r t1) (substTP 0 r p) (substTT 0 r t2))
     as ESL.
   simpl in *.
   destruct kr.
