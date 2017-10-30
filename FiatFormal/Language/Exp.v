@@ -23,9 +23,14 @@ Inductive exp : Type :=
  | XCon   : datacon -> list exp -> exp
  | XMatch : exp     -> list alt -> exp
 
+ (* | XChoice : ty -> predicate -> list exp -> exp *)
+
  (* Alternatives *)
 with alt     : Type :=
- | AAlt   : datacon -> list ty  -> exp -> alt.
+ | AAlt   : datacon -> list ty  -> exp -> alt
+(* with predicate : Type := *)
+(* | PPred   : list ty -> predicate *)
+.
 
 Hint Constructors alt.
 Hint Constructors exp.

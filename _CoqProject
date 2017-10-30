@@ -14,6 +14,7 @@ FiatFormal/Language/SubstTypeType.v
 FiatFormal/Language/TyEnv.v
 FiatFormal/Language/TyJudge.v
 FiatFormal/Language/Ty.v
+FiatFormal/Language/Context.v
 
 FiatFormal/Data/Bool.v
 FiatFormal/Data/Chain.v
@@ -23,6 +24,22 @@ FiatFormal/Data/Monoid.v
 FiatFormal/Data/Nat.v
 FiatFormal/Data/Sequence.v
 FiatFormal/Data/UpLattice.v
+
+FiatFormal/Data/List/Base.v
+FiatFormal/Data/List/Concat.v
+FiatFormal/Data/List/Delete.v
+FiatFormal/Data/List/Elem.v
+FiatFormal/Data/List/Extends.v
+FiatFormal/Data/List/Filter.v
+FiatFormal/Data/List/Firstn.v
+FiatFormal/Data/List/Forall2.v
+FiatFormal/Data/List/Forall.v
+FiatFormal/Data/List/Insert.v
+FiatFormal/Data/List/Map.v
+FiatFormal/Data/List/Max.v
+FiatFormal/Data/List/Program.v
+FiatFormal/Data/List/Replace.v
+FiatFormal/Data/List/Update.v
 
 FiatFormal/Norm/List.v
 
@@ -43,5 +60,3 @@ FiatFormal/Tactics/Short.v
 
 FiatFormal/Norm.v
 FiatFormal/Tactics.v
-FiatFormal/PMKList.v
-FiatFormal/PMKTactics.v

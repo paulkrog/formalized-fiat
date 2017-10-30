@@ -100,20 +100,38 @@ Fixpoint datacon_beq t1 t2 :=
 (* Definitions.
    Carries meta information about type and data constructors. *)
 Inductive def  : Type :=
- (* Definition of a data type constructor *)
- | DefDataType
-   :  tycon        (* Name of data type constructor *)
-   -> list datacon (* Data constructors that belong to this type *)
-   -> def
+(* Definition of a data type constructor *)
+| DefDataType
+  : tycon          (* Name of data type constructor *)
+    -> list datacon (* Data constructors that belong to this type *)
+    -> def
 
- (* Definition of a data constructor *)
- | DefData
-   :  datacon      (* Name of data constructor *)
-   -> list ty      (* Types of arguments *)
-   -> ty           (* Type  of constructed data *)
-   -> def.
+(* Definition of a data constructor *)
+| DefData
+  : datacon     (* Name of data constructor *)
+    -> list ty   (* Types of arguments *)
+    -> ty        (* Type  of constructed data *)
+    -> def.
 Hint Constructors def.
 
+(* Inductive predcon : Type := *)
+(* | PredCon : nat -> predcon. *)
+(* Hint Constructors predcon. *)
+
+(* Inductive proofcon : Type := *)
+(* | ProofCon : nat -> proofcon. *)
+(* Hint Constructors proofcon. *)
+
+(* Inductive predDef : Type := *)
+(* | DefPredType *)
+(*   : predcon *)
+(*     -> list proofcon *)
+(*     -> predDef *)
+(* | DefProof *)
+(*   : proofcon *)
+(*     -> list ty *)
+(*     -> ty *)
+(*     -> predDef. *)
 
 (* Definition environment.
    Holds the definitions of all current type and data constructors. *)

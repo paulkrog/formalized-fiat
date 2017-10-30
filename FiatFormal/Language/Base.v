@@ -8,5 +8,4 @@ Require Export FiatFormal.Tactics.Rip2.
 Require Export Coq.Program.Basics.
 Require Export Coq.Arith.Compare_dec.
 
-Require Export FiatFormal.PMKTactics.
 Require Export FiatFormal.Tactics.
