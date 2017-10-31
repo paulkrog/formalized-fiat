@@ -1,10 +1,6 @@
 
 Require Export FiatFormal.Language.Ki.
 
-(* PMK: what I learned from writing ty_ind by hand: *)
-(* No mutual induction needed in proof of ty_ind.
-*)
-
 
 (* Algebraic Data Type Constructors *)
 Inductive tycon : Type :=
@@ -16,18 +12,26 @@ Fixpoint tycon_beq t1 t2 :=
   | TyConData n1, TyConData n2 => beq_nat n1 n2
   end.
 
+Inductive propcon : Type :=
+| PropCon : nat -> propcon.
+Hint Constructors propcon.
+
+Fixpoint propcon_beq t1 t2 :=
+  match t1, t2 with
+  | PropCon n1, PropCon n2 => beq_nat n1 n2
+  end.
+
 
 Unset Elimination Schemes.
 (* Type Expressions *)
 Inductive ty  : Type :=
  | TCon    : tycon -> ty         (* Data type constructor. *)
  | TVar    : nat -> ty             (* deBruijn index. *)
- (* | TForall : ty  -> ty       (* Type variable binding. *) *)
  | TFun    : ty  -> ty -> ty      (* Function type constructor. *)
-
  | TExists : ty -> ty
  | TNProd   : list ty -> ty
- | TNFun    : list ty -> ty -> ty.
+ | TNFun    : list ty -> ty -> ty
+ | TProp    : propcon -> ty.
 
 Hint Constructors ty.
 
@@ -40,16 +44,12 @@ Theorem ty_ind :
     -> (forall t, PT t -> PT (TExists t))
     -> (forall ts, Forall PT ts -> PT (TNProd ts))
     -> (forall ts tRes, Forall PT ts -> PT tRes -> PT (TNFun ts tRes))
-    (* -> (Forall PT nil) *)
-    (* -> (forall t ts, PT t -> Forall PT ts -> Forall PT (ts :> t)) *)
+    -> (forall pc, PT (TProp pc))
     -> forall t, PT t.
 Proof.
   intros PT.
-  intros tcon tvar tfun texists tnprod tnfun.
-  (* refine (fix IHT t : PT t := _). *)
+  intros tcon tvar tfun texists tnprod tnfun pcon.
   refine (fix IHT t : PT t := _).
-          (* with IHL l : Forall PT l := _ *)
-          (*                               for IHT). *)
   intros.
   case t; intros.
   Case "TCon".
@@ -63,26 +63,14 @@ Proof.
   apply texists. apply IHT. Guarded.
   Case "TNProd".
   apply tnprod. induction l. apply Forall_nil. apply Forall_cons. apply IHT. Guarded. apply IHl. Guarded.
-
-(* remember l. induction l. apply IHL. Guarded. apply IHL. Guarded. *)
   Case "TNFun".
   apply tnfun.  induction l. apply Forall_nil. apply Forall_cons. apply IHT. Guarded. apply IHl. Guarded.
-
-(* remember l. induction l. apply IHL. apply IHL. Guarded. *)
   apply IHT.
   Guarded.
-  (* Case "LIST". *)
-  (* induction l; intros. *)
-  (* apply Forall_nil. Guarded. *)
-  (* apply Forall_cons. Focus 2. apply IHl. Guarded. *)
-  (* apply IHT. Guarded. *)
-  (* apply IHL. *)
+  Case "TProp".
+  apply pcon.
+  Guarded.
 Qed.
-(*   remember l. *)
-(*   case l0; intros. *)
-(*   apply IHL. Guarded. *)
-(*   remember l. induction l. apply IHL. apply IHL. *)
-(* Qed. *)
 Unset Elimination Schemes.
 
 (* Data Constructors *)
@@ -90,12 +78,19 @@ Inductive datacon : Type :=
  | DataCon    : nat -> datacon.
 Hint Constructors datacon.
 
-
 Fixpoint datacon_beq t1 t2 :=
   match t1, t2 with
   | DataCon n1, DataCon n2 => beq_nat n1 n2
   end.
 
+Inductive proofcon : Type :=
+| ProofCon : nat -> proofcon.
+Hint Constructors proofcon.
+
+Fixpoint proofcon_beq t1 t2 :=
+  match t1, t2 with
+  | ProofCon n1, ProofCon n2 => beq_nat n1 n2
+  end.
 
 (* Definitions.
    Carries meta information about type and data constructors. *)
@@ -111,27 +106,21 @@ Inductive def  : Type :=
   : datacon     (* Name of data constructor *)
     -> list ty   (* Types of arguments *)
     -> ty        (* Type  of constructed data *)
+    -> def
+
+(* Definition of a proposition type constructor *)
+| DefPropType
+  : propcon         (* name of proposition type constructor *)
+    -> list proofcon (* proof constructors that build proof of this proposition *)
+    -> def
+
+(* Definition of a proof constructor *)
+| DefProof
+  : proofcon        (* name of proof constructor *)
+    -> list ty       (* types of arguments *)
+    -> ty            (* type of constructed proof *)
     -> def.
 Hint Constructors def.
-
-(* Inductive predcon : Type := *)
-(* | PredCon : nat -> predcon. *)
-(* Hint Constructors predcon. *)
-
-(* Inductive proofcon : Type := *)
-(* | ProofCon : nat -> proofcon. *)
-(* Hint Constructors proofcon. *)
-
-(* Inductive predDef : Type := *)
-(* | DefPredType *)
-(*   : predcon *)
-(*     -> list proofcon *)
-(*     -> predDef *)
-(* | DefProof *)
-(*   : proofcon *)
-(*     -> list ty *)
-(*     -> ty *)
-(*     -> predDef. *)
 
 (* Definition environment.
    Holds the definitions of all current type and data constructors. *)
@@ -151,7 +140,6 @@ Fixpoint getTypeDef (tc: tycon) (ds: defs) : option def :=
  | Empty    => None
  end.
 
-
 (* Lookup the def of a given data constructor.
    Returns None if it's not in the list. *)
 Fixpoint getDataDef (dc: datacon) (ds: defs) : option def :=
@@ -162,6 +150,32 @@ Fixpoint getDataDef (dc: datacon) (ds: defs) : option def :=
      else  getDataDef dc ds'
 
  | ds' :> _ => getDataDef dc ds'
+ | Empty    => None
+ end.
+
+(* Lookup the def of a given proposition type constructor.
+   Returns None if it's not in the list. *)
+Fixpoint getPropDef (pc: propcon) (ds: defs) : option def :=
+ match ds with
+ | ds' :> DefPropType pc' _ as d
+ => if propcon_beq pc pc'
+     then  Some d
+     else  getPropDef pc ds'
+
+ | ds' :> _ => getPropDef pc ds'
+ | Empty    => None
+ end.
+
+(* Lookup the def of a given proof constructor.
+   Returns None if it's not in the list. *)
+Fixpoint getProofDef (pc: proofcon) (ds: defs) : option def :=
+ match ds with
+ | ds' :> DefProof pc' _ _ as d
+ => if proofcon_beq pc pc'
+     then  Some d
+     else  getProofDef pc ds'
+
+ | ds' :> _ => getProofDef pc ds'
  | Empty    => None
  end.
 
@@ -179,7 +193,6 @@ Proof.
  apply beq_nat_eq in H.
  auto.
 Qed.
-
 
 (* Boolean negation for data constructors. *)
 Lemma datacon_beq_false
@@ -211,13 +224,13 @@ Inductive simpleType : ty -> Prop :=
 | Simp_TNFun : forall ts tRes,
     simpleType tRes
     -> Forall (simpleType) ts
-    -> simpleType (TNFun ts tRes).
-
+    -> simpleType (TNFun ts tRes)
+| Simp_TProp : forall pc,
+    simpleType (TProp pc).
 Hint Constructors simpleType.
 
 Inductive wfT : kienv -> ty -> Prop :=
 | WfT_TCon : forall ke tc,
-    (* getTypeDef tc ds = Some (DataTypeDef tc dcs) *)
     wfT ke (TCon tc)
 | WfT_TVar : forall ke i k,
     get i ke = Some k
@@ -236,6 +249,8 @@ Inductive wfT : kienv -> ty -> Prop :=
 | WfT_TExists : forall ke t,
     wfT (ke :> KStar) t
     -> wfT ke (TExists t)
+| WfT_TProp : forall ke pc,
+    wfT ke (TProp pc)
 
 with wfDef : kienv -> def -> Prop := (* unused! *)
      | WfD : forall ts tRes dc ke,
@@ -245,22 +260,6 @@ with wfDef : kienv -> def -> Prop := (* unused! *)
 
 Hint Constructors wfDef.
 Hint Constructors wfT.
-
-(* Similar to wfX, wfT has been made into an Inductive datatype above *)
-(* Well formed types are closed under the given kind environment *)
-(* Fixpoint wfT (ke: kienv) (tt: ty) : Prop := *)
-(*  match tt with *)
-(*  | TCon _     => True *)
-(*  | TVar i     => exists k, get i ke = Some k *)
-(*  (* | TForall t  => wfT (ke :> KStar) t *) *)
-(*  | TFun t1 t2 => wfT ke t1 /\ wfT ke t2 *)
-
-(*  (* | TNProd ts      => True *) *)
-(*  (* | TNFun  ts tRes => Forall (wfT ke) ts /\ wfT ke tRes *) *)
-(*  (* | TNFun ts tRes => wfT ke tRes *) *)
-(*  | TExists t     => wfT (ke :> KStar) t *)
-(*  end. *)
-(* Hint Unfold wfT. *)
 
 
 (* A closed type is well formed under an empty kind environment. *)
@@ -282,9 +281,6 @@ Fixpoint liftTT (d: nat) (tt: ty) : ty :=
       then TVar (S ix)
       else tt
 
-  (* |  TForall t *)
-  (*    => TForall (liftTT (S d) t) *)
-
   | TFun t1 t2
     => TFun    (liftTT d t1) (liftTT d t2)
 
@@ -296,6 +292,8 @@ Fixpoint liftTT (d: nat) (tt: ty) : ty :=
 
   | TNFun ts tRes
     => TNFun (map (liftTT d) ts) (liftTT d tRes)
+
+  | TProp _ => tt
   end.
 Hint Unfold liftTT.
 
@@ -370,9 +368,6 @@ Fixpoint substTT (d: nat) (u: ty) (tt: ty) : ty
         | _  => TVar  ix
         end
 
-    (* |  TForall t *)
-    (* => TForall (substTT (S d) (liftTT 0 u) t) *)
-
     | TFun t1 t2
       => TFun (substTT d u t1) (substTT d u t2)
 
@@ -384,6 +379,9 @@ Fixpoint substTT (d: nat) (u: ty) (tt: ty) : ty
 
     | TNFun ts tRes
       => TNFun (map (substTT d u) ts) (substTT d u tRes)
+
+    | TProp _
+      => tt
   end.
 
 Lemma simpleSubstEq :
@@ -435,8 +433,6 @@ Proof.
 Qed.
 
 (********************************************************************)
-(* PMK: TODO -- now, types can contain lists, believe we need to *)
-(* provide custom induction scheme or use one generated by Coq's Scheme.  *)
 (* Changing the order of lifting. *)
 Lemma liftTT_liftTT
  :  forall n n' t
@@ -449,11 +445,6 @@ Proof.
  Case "TVar".
   simpl.
   repeat (unfold liftTT; lift_cases; intros); burn.
-
- (* Case "TForall". *)
- (*  simpl. *)
- (*  assert (S (n + n') = (S n) + n'). omega. rewrite H. *)
- (*  rewrite IHt. auto. *)
 
  Case "TFun".
  simpl. apply f_equal2; auto.
@@ -499,10 +490,6 @@ Proof.
    fbreak_nat_compare; intros;
    burn.
 
- (* Case "TForall". *)
- (*  simpl. *)
- (*  rewrite IHt1. auto. *)
-
  Case "TFun".
   simpl.
   rewrite IHt1_1.
@@ -543,11 +530,6 @@ Proof.
           try lift_cases; try intros);
    burn.
 
- (* Case "TForall". *)
- (*  simpl. *)
- (*  rewrite (IHt1 (S n) n'). simpl. *)
- (*  rewrite (liftTT_liftTT 0 n). auto. *)
-
  Case "TFun".
   simpl.
   rewrite IHt1_1. auto.
@@ -587,11 +569,6 @@ Proof.
          ; try lift_cases; try fbreak_nat_compare
          ; intros); burn.
 
- (* Case "TForall". *)
- (*  simpl. f_equal. *)
- (*  rewrite (IHt1 (S n) n'). f_equal. *)
- (*   simpl. rewrite (liftTT_liftTT 0 (n + n')). auto. *)
-
  Case "TFun".
   simpl. f_equal.
    apply IHt1_1.
@@ -628,36 +605,30 @@ Proof.
  induction t1; intros; auto.
 
  Case "TVar".
-  repeat (simpl; fbreak_nat_compare); try burn.
-  rewrite substTT_liftTT. auto.
-
- (* Case "TForall". *)
- (*  simpl. f_equal. *)
- (*  rewrite (IHt1 (S n) m). f_equal. *)
- (*   simpl. rewrite (liftTT_substTT 0 (n + m)). auto. *)
- (*   simpl. rewrite (liftTT_liftTT 0 n). auto. *)
+ repeat (simpl; fbreak_nat_compare); try burn.
+ rewrite substTT_liftTT. auto.
 
  Case "TFun".
-  simpl. f_equal.
-   apply IHt1_1.
-   apply IHt1_2.
+ simpl. f_equal.
+ apply IHt1_1.
+ apply IHt1_2.
 
-   Case "TExists".
-   simpl. f_equal.
-   rewrite (IHt1 (S n) m). f_equal.
-   simpl. rewrite (liftTT_substTT 0 (n + m)). auto.
-   simpl. rewrite (liftTT_liftTT 0 n). auto.
+ Case "TExists".
+ simpl. f_equal.
+ rewrite (IHt1 (S n) m). f_equal.
+ simpl. rewrite (liftTT_substTT 0 (n + m)). auto.
+ simpl. rewrite (liftTT_liftTT 0 n). auto.
 
-   Case "TNProd".
-   simpl. apply f_equal.
-   repeat rewrite (map_map).
-   apply map_ext_in; intros.
-   apply (Forall_in _ _ _ H H0).
+ Case "TNProd".
+ simpl. apply f_equal.
+ repeat rewrite (map_map).
+ apply map_ext_in; intros.
+ apply (Forall_in _ _ _ H H0).
 
-   Case "TNFun".
-   simpl. apply f_equal2.
-   repeat rewrite (map_map).
-   apply map_ext_in; intros.
-   apply (Forall_in _ _ _ H H0).
-   apply IHt1.
+ Case "TNFun".
+ simpl. apply f_equal2.
+ repeat rewrite (map_map).
+ apply map_ext_in; intros.
+ apply (Forall_in _ _ _ H H0).
+ apply IHt1.
 Qed.

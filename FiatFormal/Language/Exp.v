@@ -7,30 +7,20 @@ Require Export FiatFormal.Language.Ki.
 (* Expressions *)
 Inductive exp : Type :=
  | XVar  : nat -> exp             (* deBruijn indices *)
- (* | XLAM  : exp -> exp             (* Type abstraction *) *)
- (* | XAPP  : exp -> ty  -> exp      (* Type application *) *)
- | XLam  : ty  -> exp -> exp      (* Value abstraction *)
  | XApp  : exp -> exp -> exp      (* Value application *)
-
  | XTup   : list exp -> exp
  | XProj  : nat -> exp -> exp
  | XNFun  : list ty -> exp -> exp
  | XNApp  : exp -> list exp -> exp
-
  | XFix   : ty -> ty -> exp -> exp
-
  (* Data Types *)
  | XCon   : datacon -> list exp -> exp
  | XMatch : exp     -> list alt -> exp
-
- (* | XChoice : ty -> predicate -> list exp -> exp *)
+ | XChoice : ty -> proofcon -> list exp -> exp
 
  (* Alternatives *)
 with alt     : Type :=
- | AAlt   : datacon -> list ty  -> exp -> alt
-(* with predicate : Type := *)
-(* | PPred   : list ty -> predicate *)
-.
+ | AAlt   : datacon -> list ty  -> exp -> alt.
 
 Hint Constructors alt.
 Hint Constructors exp.
@@ -106,7 +96,6 @@ Theorem exp_mutind
     (PX : exp -> Prop)
     (PA : alt -> Prop)
  ,  (forall n,                                PX (XVar n))
- -> (forall t  x1,   PX x1                 -> PX (XLam t x1))
  -> (forall x1 x2,   PX x1 -> PX x2        -> PX (XApp x1 x2))
  -> (forall xs,      Forall PX xs         -> PX (XTup xs))
  -> (forall n x,     PX x                 -> PX (XProj n x))
@@ -115,11 +104,12 @@ Theorem exp_mutind
  -> (forall t1 t2 x, PX x                 -> PX (XFix t1 t2 x))
  -> (forall dc xs,   Forall PX xs         -> PX (XCon dc xs))
  -> (forall x  aa,   PX x  -> Forall PA aa -> PX (XMatch x aa))
+ -> (forall t pc xs, Forall PX xs         -> PX (XChoice t pc xs))
  -> (forall dc ts x, PX x                 -> PA (AAlt dc ts x))
  ->  forall x, PX x.
 Proof.
   intros PX PA.
-  intros var lam app tup proj nfun napp ffix con mmatch alt.
+  intros var app tup proj nfun napp ffix con mmatch proof alt.
   refine (fix  IHX x : PX x := _
             with IHA a : PA a := _
                                    for  IHX).
@@ -129,10 +119,6 @@ Proof.
 
   Case "XVar".
   apply var.
-
-  Case "XLam".
-  apply lam.
-  apply IHX.
 
   Case "XApp".
   apply app.
@@ -169,6 +155,10 @@ Proof.
   apply IHX.
   induction l; intuition.
 
+  Case "XCon".
+  apply proof.
+  induction l; intuition.
+
   (* alternatives *)
   case a; intros.
 
@@ -178,9 +168,6 @@ Proof.
 Qed.
 
 Inductive hasChoiceX : exp -> Prop :=
-| HcLam  : forall t x,
-    hasChoiceX x
-    -> hasChoiceX (XLam t x)
 | HcApp1  : forall x1 x2,
     hasChoiceX x1
     -> hasChoiceX (XApp x1 x2)
@@ -214,12 +201,17 @@ Inductive hasChoiceX : exp -> Prop :=
 | HcMatch2  : forall x aa,
     Exists hasChoiceA aa
     -> hasChoiceX (XMatch x aa)
+| HcChoice  : forall t pc xs,
+    hasChoiceX (XChoice t pc xs)
+
 with hasChoiceA : alt -> Prop :=
      | HcAlt : forall dc ts x,
          hasChoiceX x
          -> hasChoiceA (AAlt dc ts x).
+
 Hint Constructors hasChoiceX.
 Hint Constructors hasChoiceA.
+
 
 (* ADTs *)
 Inductive adt : Type :=
@@ -248,14 +240,6 @@ Inductive wnfX : exp -> Prop :=
    : forall i
    , wnfX (XVar i)
 
- (* | Wnf_XLAM *)
- (*   : forall x1 *)
- (*   , wnfX (XLAM x1) *)
-
- | Wnf_XLam
-   : forall t1 x2
-   , wnfX (XLam t1 x2)
-
  | Wnf_XTup
    : forall xs,
      Forall wnfX xs
@@ -272,17 +256,19 @@ Inductive wnfX : exp -> Prop :=
  | Wnf_XCon
    : forall dc xs,
      Forall wnfX xs
-     -> wnfX (XCon dc xs).
+     -> wnfX (XCon dc xs)
 
+ (* | Wnf_XChoice *)
+ (*   : forall t pc xs, *)
+ (*     Forall wnfX xs *)
+ (*     -> wnfX (XChoice t pc xs) *)
+.
 Hint Constructors wnfX.
 
 (* A well formed expression is closed under the given environments *)
 Inductive wfX : kienv -> tyenv -> exp -> Prop :=
 | WfX_XVar : forall ke te i t,
     get i te = Some t -> wfX ke te (XVar i)
-| WfX_XLam : forall ke te t x,
-    wfT ke t -> wfX ke (te :> t) x
-    -> wfX ke te (XLam t x)
 | WfX_XApp : forall ke te x1 x2,
     wfX ke te x1 -> wfX ke te x2
     -> wfX ke te (XApp x1 x2)
@@ -312,6 +298,10 @@ Inductive wfX : kienv -> tyenv -> exp -> Prop :=
     wfX ke te x
     -> Forall (wfA ke te) aa
     -> wfX ke te (XMatch x aa)
+| WfX_XChoice : forall ke te t pc xs,
+    wfT ke t
+    -> Forall (wfX ke te) xs
+    -> wfX ke te (XChoice t pc xs)
 
 with wfA : kienv -> tyenv -> alt -> Prop :=
      | WfA_AAlt : forall ke te dc ds ts x tsArgs tRes,
@@ -322,28 +312,11 @@ with wfA : kienv -> tyenv -> alt -> Prop :=
 Hint Constructors wfA.
 Hint Constructors wfX.
 
-(* PMK: wfX has been made an Inductive data type above *)
-(* Fixpoint wfX (ke: kienv) (te: tyenv) (xx: exp) : Prop := *)
-(*  match xx with *)
-(*  | XVar i     => exists t, get i te = Some t *)
-(*  (* | XLAM x     => wfX (ke :> KStar) (liftTE 0 te) x *) *)
-(*  (* | XAPP x t   => wfX ke te x  /\ wfT ke t *) *)
-(*  | XLam t x   => wfT ke t     /\ wfX ke (te :> t) x *)
-(*  | XApp x1 x2 => wfX ke te x1 /\ wfX ke te x2 *)
-
-(*  (* | XTup xs => Forall (wfX ke te) xs *) *)
-(*  (* | XProj n x => wfX ke te x *) *)
-(*  (* | XNFun ts x => Forall (wfT ke) ts /\ wfX ke (te >< ts) x *) *)
-(*  (* | XNApp x1 xs => wfX ke te x1 /\ Forall (wfX ke te) xs *) *)
-(*  end. *)
-(* Hint Unfold wfX. *)
-
 
 (* Closed expressions are well formed under empty environments *)
 Definition closedX (xx: exp) : Prop
  := wfX nil nil xx.
 Hint Unfold closedX.
-
 
 (* Values are closed expressions that cannot be reduced further. *)
 Inductive value : exp -> Prop :=
@@ -360,16 +333,6 @@ Hint Constructors value.
 Fixpoint liftTX (d: nat) (xx: exp) : exp :=
   match xx with
   | XVar _     => xx
-
-  (* Increase type depth when moving across type abstractions. *)
-  (* |  XLAM x *)
-  (* => XLAM (liftTX (S d) x) *)
-
-  (* |  XAPP x t *)
-  (* => XAPP (liftTX d x)  (liftTT d t) *)
-
-  | XLam t x
-    => XLam (liftTT d t)  (liftTX d x)
 
   | XApp x1 x2
     => XApp (liftTX d x1) (liftTX d x2)
@@ -394,6 +357,9 @@ Fixpoint liftTX (d: nat) (xx: exp) : exp :=
 
   | XMatch x aa
     => XMatch (liftTX d x) (map (liftTA d) aa)
+
+  | XChoice t pc xs
+    => XChoice (liftTT d t) pc (map (liftTX d) xs)
   end
 
 with liftTA (d: nat) (a : alt) : alt :=
@@ -402,7 +368,6 @@ with liftTA (d: nat) (a : alt) : alt :=
        end.
 
 
-(* PMK: Changed to include parameter for amount to lift by *)
 (* Lift value indices in expressions. *)
 Fixpoint liftXX (n: nat) (d: nat) (xx: exp) : exp :=
   match xx with
@@ -410,16 +375,6 @@ Fixpoint liftXX (n: nat) (d: nat) (xx: exp) : exp :=
     => if le_gt_dec d ix
       then XVar (n + ix)
       else xx
-
-  (* |  XLAM x *)
-  (* => XLAM (liftXX d x) *)
-
-  (* |  XAPP x t *)
-  (* => XAPP (liftXX d x) t *)
-
-  (* Increase value depth when moving across value abstractions. *)
-  | XLam t x
-    => XLam t (liftXX n (S d) x)
 
   | XApp x1 x2
     => XApp (liftXX n d x1) (liftXX n d x2)
@@ -436,6 +391,7 @@ Fixpoint liftXX (n: nat) (d: nat) (xx: exp) : exp :=
   | XNApp x xs
     => XNApp (liftXX n d x) (map (liftXX n d) xs)
 
+  (* Increase value depth when moving across value abstractions. *)
   | XFix t1 t2 x
     => XFix t1 t2 (liftXX n (S (S d)) x)
 
@@ -444,6 +400,9 @@ Fixpoint liftXX (n: nat) (d: nat) (xx: exp) : exp :=
 
   | XMatch x aa
     => XMatch (liftXX n d x) (map (liftXA n d) aa)
+
+  | XChoice t pc xs
+    => XChoice t pc (map (liftXX n d) xs)
   end
 
 with liftXA (n: nat) (d: nat) (a: alt) : alt :=
@@ -457,17 +416,6 @@ with liftXA (n: nat) (d: nat) (a: alt) : alt :=
 Fixpoint substTX (d: nat) (u: ty) (xx: exp) : exp :=
   match xx with
   | XVar _     => xx
-
-  (* Lift free type variables in the type to be substituted
-     when we move across type abstractions. *)
-  (* |  XLAM x *)
-  (* => XLAM (substTX (S d) (liftTT 0 u) x) *)
-
-  (* |  XAPP x t *)
-  (* => XAPP (substTX d u x)  (substTT d u t) *)
-
-  | XLam t x
-    => XLam (substTT d u t)  (substTX d u x)
 
   | XApp x1 x2
     => XApp (substTX d u x1) (substTX d u x2)
@@ -492,7 +440,11 @@ Fixpoint substTX (d: nat) (u: ty) (xx: exp) : exp :=
 
   | XMatch x aa
     => XMatch (substTX d u x) (map (substTA d u) aa)
+
+  | XChoice t pc xs
+    => XChoice (substTT d u t) pc (map (substTX d u) xs)
   end
+
 with substTA (d: nat) (u: ty) (a: alt) : alt :=
        match a with
        | AAlt dc ts x => AAlt dc (map (substTT d u) ts) (substTX d u x)
@@ -508,20 +460,6 @@ Fixpoint substXX (d: nat) (u: exp) (xx: exp) : exp :=
       | Gt => XVar (ix - 1)
       | _  => XVar  ix
       end
-
-  (* Lift free type variables in the expression to be substituted
-     when we move across type abstractions. *)
-  (* |  XLAM x *)
-  (* => XLAM (substXX d (liftTX 0 u) x) *)
-
-  (* |  XAPP x t *)
-  (* => XAPP (substXX d u x) t *)
-
-  (* Lift free value variables in the expression to be substituted
-     when we move across value abstractions. *)
-  | XLam t x
-    => XLam t (substXX (S d) (liftXX 1 0 u) x)
-
   | XApp x1 x2
     => XApp (substXX d u x1) (substXX d u x2)
 
@@ -537,6 +475,8 @@ Fixpoint substXX (d: nat) (u: exp) (xx: exp) : exp :=
   | XNApp x xs
     => XNApp (substXX d u x) (map (substXX d u) xs)
 
+  (* Lift free value variables in the expression to be substituted
+     when we move across value abstractions. *)
   | XFix t1 t2 x
     => XFix t1 t2 (substXX (S (S d)) (liftXX 2 0 u) x)
 
@@ -545,7 +485,11 @@ Fixpoint substXX (d: nat) (u: exp) (xx: exp) : exp :=
 
   | XMatch x aa
     => XMatch (substXX d u x) (map (substXA d u) aa)
+
+  | XChoice t pc xs
+    => XChoice t pc (map (substXX d u) xs)
   end
+
 with substXA (d: nat) (u: exp) (a: alt) : alt :=
        match a with
        | AAlt dc ts x => AAlt dc ts (substXX (d + length ts) (liftXX (length ts) 0 u) x)
@@ -558,7 +502,6 @@ Fixpoint substXXs (d: nat) (us: list exp) (xx: exp) :=
                  (substXX d (liftXX (List.length us') 0 u)
                             xx)
  end.
-
 
 
 (* The data constructor of an alternative is unchanged
@@ -624,6 +567,11 @@ Proof.
   nforall.
   rewrite (map_ext_in (liftXA 0 d) id); auto.
   rewrite map_id. rewrite IHx; auto.
+
+  Case "XChoice".
+  nforall.
+  rewrite (map_ext_in (liftXX 0 d) id); auto.
+  rewrite map_id; auto.
 Qed.
 
 (* Commutivity of expression lifting. *)
@@ -679,6 +627,14 @@ Proof.
  rewrite (map_ext_in
             (fun a1 => liftXA n d (liftXA m d a1))
             (fun a1 => liftXA m d (liftXA n d a1))); burn.
+
+ Case "XChoice".
+ f_equal.
+ repeat (rewrite map_map).
+ rewrite Forall_forall in *.
+ rewrite (map_ext_in
+            (fun x0 => liftXX n d (liftXX m d x0))
+            (fun x0 => liftXX m d (liftXX n d x0))); burn.
 Qed.
 
 
@@ -732,6 +688,14 @@ Proof.
   rewrite (map_ext_in
              (fun x1 => liftXA (S n) d (liftXA m d x1))
              (fun x1 => liftXA n d (liftXA (S m) d x1))); burn.
+
+  Case "XChoice".
+  f_equal.
+  repeat (rewrite map_map).
+  rewrite Forall_forall in *.
+  rewrite (map_ext_in
+             (fun x0 => liftXX (S n) d (liftXX m d x0))
+             (fun x0 => liftXX n d (liftXX (S m) d x0))); burn.
 Qed.
 
 

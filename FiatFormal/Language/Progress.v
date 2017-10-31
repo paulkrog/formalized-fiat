@@ -18,13 +18,12 @@ Lemma canonicalFormTFun :
   forall ds ke te t1 t2 x,
     TYPE ds ke te x (TFun t1 t2)
     -> value x
-    -> exists x', (x = (XLam t1 x') \/ x = (XFix t1 t2 x')).
+    -> exists x', x = (XFix t1 t2 x').
 Proof.
   intros. gen ds ke te t1 t2 H0.
   induction x using exp_mutind
     with (PA := fun a => a = a); rip; try inverts H0; try nope; try inverts H.
-  exists x; left; reflexivity.
-  exists x; right; reflexivity.
+  exists x; reflexivity.
 Qed.
 
 Lemma canonicalFormTNFun :
@@ -74,78 +73,11 @@ Theorem progress
     (exists t, TYPE ds nil nil x t)
     -> value x \/ (exists x', STEP x x') \/ hasChoiceX x.
 Proof.
-(*  intros. gen ds. *)
-(*  induction x using exp_mutind *)
-(*    with (PA := fun a => a = a); *)
-(*    rip; first [destruct H as [tx] | destruct H0 as [tx]]. *)
-
-(*  Case "XVar". *)
-(*   inverts H. false. *)
-
-(*  (* Case "XLAM". *) *)
-(*  (*  left. apply type_wfX in H. auto. *) *)
-
-(*  (* Case "XAPP". *) *)
-(*  (*  inverts H. *) *)
-(*  (*  destruct IHx. eauto. *) *)
-(*  (*  SCase "x value". *) *)
-(*  (*   right. inverts H. inverts H4. *) *)
-(*  (*    inverts H1. false. *) *)
-(*  (*    inverts H0. *) *)
-(*  (*    exists (substTX 0 t x1). eapply ESLAMAPP. *) *)
-(*  (*    inverts H0. *) *)
-(*  (*  SCase "x steps". *) *)
-(*  (*   right. *) *)
-(*  (*    destruct H as [x']. *) *)
-(*  (*    exists (XAPP x' t). *) *)
-(*  (*    apply ESAPP1. auto. *) *)
-
-(*  Case "XLam". *)
-(*   left. apply type_wfX in H. auto. *)
-
-(*  Case "XApp". *)
-(*   right. *)
-(*   inverts H. *)
-(*   destruct (IHx1 ds) as [| []]; eauto. *)
-(*   SCase "x1 value". *)
-(*   pose proof (canonicalFormTFun). *)
-(*   spec H0 H5. spec H0 H. *)
-(*   destruct H0 as [x' [LAM | FIX]]; subst. *)
-(*   destruct (IHx2 ds) as [| []]; eauto. *)
-(*   SSCase "x2 value". *)
-(*   left. exists (substXX 0 x2 x'); apply EsLamApp; inverts H0; auto. *)
-(*   SSCase "x2 steps". *)
-(*   destruct H0 as [x'']. *)
-(*   left. exists (XApp (XLam t11 x') x''). eauto. *)
-(*   SSCase "x2 hasChoice". *)
-(*   inversion H0. *)
-(*   destruct (IHx2 ds) as [| []]; eauto. *)
-(*   left. exists (substXX 0 (XFix t11 tx x') (substXX 0 x2 x')). apply EsFixApp; inverts H0; auto. *)
-(*   destruct H0 as [x'']. *)
-(*   left; exists (XApp (XFix t11 tx x') x''). eauto. *)
-(*   inversion H0. *)
-(*   SCase "x1 steps". *)
-(*   left. destruct H as [x1']. exists (XApp x1' x2). apply EsContext. *)
-(*   apply ESApp1; auto. *)
-
-(*   SCase "x1 hasChoice". *)
-(*   inversion H. *)
-(* Qed. *)
-
-
-(* Theorem progress *)
-(*  :  forall ds x t *)
-(*  ,  TYPE ds nil x t *)
-(*  -> value x \/ (exists x', STEP x x'). *)
-(* Proof. *)
  intros. gen ds.
  induction x using exp_mutind with
      (PA := fun a => a = a);
    rip; first [destruct H as [tx] | destruct H0 as [tx]];
      try invert_exp_type; nope.
-
- Case "XLam".
- left; eauto.
 
  Case "XApp".
  right.
@@ -154,9 +86,7 @@ Proof.
  edestruct IHx2; eauto.
  SSCase "value x2".
  pose proof (canonicalFormTFun).
- spec H1 H5. spec H1 H. destruct H1 as [x' [LAM | FIX]]; subst.
- SSSCase "lam".
- left; exists (substXX 0 x2 x'). apply EsLamApp. inverts H0; auto.
+ spec H1 H5. spec H1 H. destruct H1 as [x' LAM]; subst.
  SSSCase "fix".
  left; exists (substXX 0 (XFix t11 tx x') (substXX 0 x2 x')). apply EsFixApp. inverts H0; auto.
  destruct H0 as [STx2 | HCx2].
@@ -164,14 +94,14 @@ Proof.
  destruct STx2 as [x2'].
  left; exists (XApp x1 x2'). auto.
  SSCase "x2 hasChoice".
- (* nope. *) right; auto.
+ right; auto.
  destruct H as [STx1 | HCx1].
  SCase "x1 steps".
  destruct STx1 as [x1'].
  left; exists (XApp x1' x2).
  eapply (EsContext (fun xx => XApp xx x2)); auto.
  SCase "x1 hasChoice".
- (* nope. *) right; auto.
+ right; auto.
 
  Case "XTup".
  assert (Forall (fun x => wnfX x \/ (exists x', STEP x x') \/ hasChoiceX x) xs) as HWS.
@@ -234,7 +164,6 @@ Proof.
  (* All ctor args are wnf *)
  left. eauto 6.
  (* There is a context where one ctor arg can step *)
- (* right. *)
  dest C. rename x' into x''. dest x'.
  rip. destruct H4 as [STx' | HCx'].
  left.
@@ -243,7 +172,6 @@ Proof.
  eapply (EsContext (fun xx => XNApp (XNFun ts x'') (C xx))).
  apply XcNApp2; eauto. auto.
  SCase "x' hasChoice".
- (* nope. *)
  right; apply HcNApp2.
  apply Exists_exists. exists x'. rip.
  eapply In_Context; eauto.
@@ -253,7 +181,6 @@ Proof.
  exists (XNApp x' xs); eauto.
  eapply (EsContext (fun xx => XNApp xx xs)); eauto.
  SCase "x hasChoice".
- (* nope. *)
  right; eauto.
 
  Case "XFix".
@@ -280,7 +207,6 @@ Proof.
  lets D: step_context_XCon_exists H1 STx'.
  destruct D as [x'']. eauto.
  SCase "hasChoice x".
- (* nope. *)
  right; apply HcCon.
  apply Exists_exists. exists x'. rip.
  eapply In_Context; eauto.
@@ -304,13 +230,11 @@ Proof.
  dest ts. dest x.
  left. exists (substXXs 0 l x). eapply EsMatchAlt.
  inverts H0. inverts H2; auto. eauto.
-
  destruct H0 as [STx | HCx].
  SCase "x steps".
  left; destruct STx as [x'].
  exists (XMatch x' aa).
  lets D: EsContext XcMatch; eauto.
  SCase "x hasChoice".
- (* nope. *)
  right; auto.
 Qed.

@@ -20,11 +20,6 @@ Inductive KIND : kienv -> ty -> ki -> Prop :=
    ,  get  i ke = Some k
    -> KIND ke (TVar i) k
 
- (* | KIForall *)
- (*   :  forall ke t *)
- (*   ,  KIND (ke :> KStar) t           KStar *)
- (*   -> KIND ke            (TForall t) KStar *)
-
  | KIFun
    :  forall ke t1 t2
    ,  KIND ke t1 KStar
@@ -44,8 +39,10 @@ Inductive KIND : kienv -> ty -> ki -> Prop :=
  | KINFun : forall ke ts tRes,
      KIND ke tRes KStar
      -> Forall (fun t => KIND ke t KStar) ts
-     -> KIND ke (TNFun ts tRes) KStar.
+     -> KIND ke (TNFun ts tRes) KStar
 
+ | KIProp : forall ke pc,
+     KIND ke (TProp pc) KStar.
 Hint Constructors KIND.
 
 Ltac inverts_kind :=
@@ -94,7 +91,6 @@ Proof.
  intros. unfold closedT. eapply kind_wfT. eauto.
 Qed.
 
-
 (* We can insert a new type into the environment at an arbitray point
    provided we lift existing references to types higher than this
    point across the new one. *)
@@ -108,44 +104,39 @@ Proof.
    simpl; try destruct k1.
 
  Case "TVar".
-  lift_cases; intros; auto.
+ lift_cases; intros; auto.
 
- (* Case "TForall". *)
- (*  apply KIForall. *)
- (*  rewrite insert_rewind. *)
- (*  apply IHt. auto. *)
+ Case "TExists".
+ apply KIExists.
+ rewrite insert_rewind.
+ apply IHt. auto.
 
-  Case "TExists".
-  apply KIExists.
-  rewrite insert_rewind.
-  apply IHt. auto.
+ Case "TNProd".
+ apply KINProd; eauto.
+ apply KINProd; eauto.
+ inverts_kind. inverts keep H4.
+ apply Forall_cons.
+ apply H1; assumption.
+ rewrite Forall_forall in H2.
+ rewrite Forall_forall; intros.
+ apply map_in_exists in H. destruct H as [y  [YX0  INY]].
+ specialize (H2 _ INY).
+ rewrite <- YX0. apply H2.
+ rewrite Forall_forall in H6; eauto.
 
-  Case "TNProd".
-  apply KINProd; eauto.
-  apply KINProd; eauto.
-  inverts_kind. inverts keep H4.
-  apply Forall_cons.
-  apply H1; assumption.
-  rewrite Forall_forall in H2.
-  rewrite Forall_forall; intros.
-  apply map_in_exists in H. destruct H as [y  [YX0  INY]].
-  specialize (H2 _ INY).
-  rewrite <- YX0. apply H2.
-  rewrite Forall_forall in H6; eauto.
-
-  Case "TNFun".
-  apply KINFun. inverts_kind. apply IHt; eauto.
-  apply Forall_nil.
-  inverts_kind. inverts keep H6.
-  apply KINFun; eauto.
-  apply Forall_cons.
-  apply H1; assumption.
-  rewrite Forall_forall in H2.
-  rewrite Forall_forall; intros.
-  apply map_in_exists in H. destruct H as [y  [YX0  INY]].
-  specialize (H2 _ INY).
-  rewrite <- YX0. apply H2.
-  rewrite Forall_forall in H6; eauto.
+ Case "TNFun".
+ apply KINFun. inverts_kind. apply IHt; eauto.
+ apply Forall_nil.
+ inverts_kind. inverts keep H6.
+ apply KINFun; eauto.
+ apply Forall_cons.
+ apply H1; assumption.
+ rewrite Forall_forall in H2.
+ rewrite Forall_forall; intros.
+ apply map_in_exists in H. destruct H as [y  [YX0  INY]].
+ specialize (H2 _ INY).
+ rewrite <- YX0. apply H2.
+ rewrite Forall_forall in H6; eauto.
 Qed.
 
 
@@ -156,8 +147,8 @@ Lemma liftTT_weaken
  ,  KIND  ke         t           k1
  -> KIND (ke :> k2) (liftTT 0 t) k1.
 Proof.
- intros.
- assert (ke :> k2 = insert 0 k2 ke). simpl.
-   destruct ke; auto.
- rewrite H0. apply liftTT_insert. auto.
+  intros.
+  assert (ke :> k2 = insert 0 k2 ke). simpl.
+  destruct ke; auto.
+  rewrite H0. apply liftTT_insert. auto.
 Qed.

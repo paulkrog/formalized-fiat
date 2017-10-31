@@ -36,6 +36,11 @@ Inductive exp_ctx : (exp -> exp) -> Prop :=
    : forall alts,
      exp_ctx (fun xx => XMatch xx alts)
 
+ | XcChoice
+   : forall t pc C,
+     exps_ctx wnfX C
+     -> exp_ctx (fun xx => XChoice t pc (C xx))
+
  | XcTup
    : forall C,
      exps_ctx wnfX C
@@ -65,13 +70,6 @@ Inductive STEP : exp -> exp -> Prop :=
      -> STEP x x'
      -> STEP (C x) (C x')
 
- (* Function application. *)
- | EsLamApp
-   : forall t11 x12 v2,
-     wnfX v2
-     -> STEP (XApp (XLam t11 x12) v2)
-            (substXX 0 v2 x12)
-
  | EsFixApp
    : forall t11 t22 x12 v2,
      wnfX v2
@@ -96,7 +94,20 @@ Inductive STEP : exp -> exp -> Prop :=
      Forall wnfX vs
      -> getAlt dc alts = Some (AAlt dc ts x)
      -> STEP (XMatch (XCon dc vs) alts)
-            (substXXs 0 vs x).
+            (substXXs 0 vs x)
+
+ | EsChoice
+   : forall ds t pfc vs v tsArgs prc proofs,
+     Forall wnfX vs
+     (* get definition of proof constructor *)
+     -> getProofDef pfc ds = Some (DefProof pfc tsArgs (TProp prc))
+     (* get definition of proposition that choice proof must construct *)
+     -> getPropDef prc ds = Some (DefPropType prc proofs)
+     (* check that choice's proof inhabits the proposition it claims to inhabit *)
+     -> In pfc proofs
+     -> get 0 vs = Some v
+     (* Note: this stepping rule admits many steps we don't want *)
+     -> STEP (XChoice t pfc vs) v.
 
 Hint Constructors STEP.
 

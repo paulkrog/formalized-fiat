@@ -13,12 +13,6 @@ Inductive TYPE : defs -> kienv -> tyenv -> exp -> ty -> Prop :=
    -> KIND ke t  KStar
    -> TYPE ds ke te (XVar i) t
 
- | TYLam
-   :  forall ds ke te x12 t11 t12,
-     KIND ke t11 KStar
-   -> TYPE ds ke (te :> t11)  x12            t12
-   -> TYPE ds ke  te         (XLam t11 x12) (TFun t11 t12)
-
  | TYApp
    :  forall ds ke te x1 x2 t11 t12,
      TYPE ds ke te x1 (TFun t11 t12)
@@ -48,17 +42,6 @@ Inductive TYPE : defs -> kienv -> tyenv -> exp -> ty -> Prop :=
      -> Forall2 (TYPE ds ke te) xArgs ts
      -> TYPE ds ke te (XNApp x xArgs) tRes
 
- (* | TYLAM *)
- (*   :  forall ke te x1 t1 *)
- (*   ,  TYPE (ke :> KStar) (liftTE 0 te) x1        t1 *)
- (*   -> TYPE ke            te           (XLAM x1) (TForall t1) *)
-
- (* | TYAPP *)
- (*   :  forall ke te x1 t1 t2 *)
- (*   ,  TYPE ke te x1 (TForall t1) *)
- (*   -> KIND ke t2 KStar *)
- (*   -> TYPE ke te (XAPP x1 t2) (substTT 0 t2 t1) *)
-
  | TYFix
    : forall ds ke te t1 t2 x,
      KIND ke t1 KStar
@@ -86,6 +69,19 @@ Inductive TYPE : defs -> kienv -> tyenv -> exp -> ty -> Prop :=
      -> getTypeDef tcPat ds = Some (DefDataType tcPat dcs)
      -> Forall (fun dc => In dc (map dcOfAlt alts)) dcs
      -> TYPE ds ke te (XMatch xObj alts) tRes
+
+ | TYChoice
+   : forall ds ke te t pc xs tsArgs propType,
+     (* get proof constructor definition *)
+     getProofDef pc ds = Some (DefProof pc tsArgs propType)
+     -> Forall (simpleType) tsArgs
+     (* require at least one arg type for any proof *)
+     -> get 0 tsArgs = Some t
+     -> KIND ke t KStar
+     (* check type of annotation plus types of expressions
+        match signature of proof constructor *)
+     -> Forall2 (TYPE ds ke te) xs (tl tsArgs)
+     -> TYPE ds ke te (XChoice t pc xs) t
 
 with TYPEA : defs -> kienv -> tyenv -> alt -> ty -> ty -> Prop :=
  | TYAlt
@@ -138,7 +134,6 @@ Ltac invert_exp_type :=
   repeat
     (match goal with
      | [ H: TYPE  _ _ _ (XVar  _)     _    |- _ ] => inverts H
-     | [ H: TYPE  _ _ _ (XLam  _ _)   _    |- _ ] => inverts H
      | [ H: TYPE  _ _ _ (XApp  _ _)   _    |- _ ] => inverts H
      | [ H: TYPE  _ _ _ (XTup _)   _    |- _ ] => inverts H
      | [ H: TYPE  _ _ _ (XProj  _ _)   _    |- _ ] => inverts H
@@ -147,6 +142,7 @@ Ltac invert_exp_type :=
      | [ H: TYPE  _ _ _ (XNApp  _ _)   _    |- _ ] => inverts H
      | [ H: TYPE  _ _ _ (XCon _ _) _    |- _ ] => inverts H
      | [ H: TYPE  _ _ _ (XMatch _ _)   _    |- _ ] => inverts H
+     | [ H: TYPE  _ _ _ (XChoice _ _ _) _ |- _ ] => inverts H
      | [ H: TYPEA _ _ _ (AAlt _ _ _)    _ _  |- _ ] => inverts H
     end).
 
@@ -196,11 +192,7 @@ Proof.
                    TYPEA ds ke te a tBuilds tRes
                    -> KIND ke tRes KStar); intros; try (first [inverts H | inverts H0]); eauto.
 
- (* Case "XAPP". *)
- (*  apply IHx in H4. inverts H4. *)
- (*  eapply subst_type_type; eauto. *)
-
- Case "XLam".
+ Case "???".
  eapply IHx1 in H5. inverts H5. auto.
 
  Case "XTup".
@@ -243,8 +235,11 @@ Proof.
  spec H5 x0.
  assert (In x0 (l0 :> x0)) by auto.
  spec H5 H. spec H1 H5; auto.
-Qed.
 
+ Case "XChoice".
+ inverts H0; auto.
+ inverts H0; auto.
+Qed.
 
 (* Ltac stomp_forall := *)
 (*   do 1 (first [ inverts_type | *)
@@ -252,7 +247,6 @@ Qed.
 (*                 constructor | *)
 (*                 rewrite Forall_forall; intros | *)
 (*                 eauto ]). *)
-
 
 (* A well typed expression is well formed. *)
 Theorem type_wfX
@@ -268,20 +262,6 @@ Proof.
 
   Case "XVar".
   inverts H. eauto.
-
-  (* Case "XLAM". *)
-  (*  inverts H. *)
-  (*  apply IHx in H3. eauto. *)
-
-  (* Case "XAPP". *)
-  (*  inverts H. *)
-  (*  lets D: IHx H4. split. *)
-  (*   auto. eapply kind_wfT. eauto. *)
-
-  Case "XLam".
-  inverts H.
-  apply IHx in H7.
-  apply kind_wfT in H5. auto.
 
   Case "XApp".
   inverts H.
@@ -342,11 +322,29 @@ Proof.
   eapply IHx; eauto.
   rewrite Forall_forall; intros.
   spec H H1. spec H4 H1. spec H H4; auto.
+
+  Case "XChoice".
+  inverts keep H0.
+  constructor. eapply kind_wfT; eauto.
+  repeat nforall. intros.
+  pose proof (Forall2_exists_left_in _ _ _ _ H1 H12) as [y [INy TYx]].
+  eapply H; eauto.
+
+  Case "Alt".
   inverts keep H. econstructor; eauto.
 Qed.
 Hint Resolve type_wfX.
 
-(* AUTOMATION! *)
+
+Lemma In_tl (A : Type)
+  : forall x l,
+    @In A x (tl l)
+    -> @In A x l .
+Proof.
+  intros.
+  destruct l. nope.
+  simpl in *; auto.
+Qed.
 
 (********************************************************************)
 (* Weakening the kind environment of a type judgement.
@@ -375,25 +373,6 @@ Proof.
   apply TYVar.
   apply get_map. auto.
   apply liftTT_insert. auto.
-
-  (* Case "XLAM". *)
-  (*  eapply TYLAM. *)
-  (*  rewrite insert_rewind. *)
-  (*   rewrite (liftTE_liftTE 0 ix). *)
-  (*   apply IHx1. auto. *)
-
-  (* Case "XAPP". *)
-  (*  rewrite (liftTT_substTT' 0 ix). simpl. *)
-  (*  eapply TYAPP. *)
-  (*  eapply (IHx1 ix) in H4. simpl in H4. eauto. *)
-  (*  apply liftTT_insert. auto. *)
-
-  Case "XLam".
-  apply TYLam.
-  apply liftTT_insert. auto.
-  assert ( liftTE ix te :> liftTT ix t
-           = liftTE ix (te :> t)). auto. rewrite H. clear H.
-  apply IHx1. auto.
 
   Case "XApp".
   eapply TYApp.
@@ -475,6 +454,25 @@ Proof.
   shift a. rip.
   eapply dcOfAlt_liftTA.
 
+  Case "XChoice".
+  eapply TYChoice; eauto.
+  assert (t1 = liftTT ix t1).
+  nforall. apply get_in in H9.
+  spec H5 H9.
+  apply simpleLiftEq; auto.
+  rewrite <- H0; auto.
+  apply liftTT_insert; auto.
+
+  apply (Forall2_map_left (TYPE ds (insert ix k2 ke) (liftTE ix te))).
+  apply (Forall2_impl_in  (TYPE ds ke te)); eauto.
+  nforall; eauto.
+  intros. apply In_tl in H1. spec H5 H1.
+  assert (y = liftTT ix y).
+  apply simpleLiftEq; auto.
+  rewrite H3.
+  nforall.
+  apply H; auto.
+
   Case "XAlt".
   eapply TYAlt; eauto.
   assert (map (liftTT ix) ts = ts).
@@ -531,35 +529,14 @@ Proof.
   Case "XVar".
   lift_cases; intros; auto.
 
-  (* Case "XLAM". *)
-  (*  apply TYLAM. simpl. *)
-  (*  assert ( liftTE 0 (insert ix t2 te) *)
-  (*         = insert ix (liftTT 0 t2) (liftTE 0 te)). *)
-  (*   unfold liftTE. rewrite map_insert. auto. *)
-  (*  rewrite H. *)
-  (*  apply IHx1. auto. *)
-
-  Case "XLam".
-  eapply TYLam.
-  auto.
-  rewrite insert_rewind. apply IHx1. auto.
-
   Case "XTup".
   eapply TYTup; eauto.
   apply (Forall2_map_left (TYPE ds ke (insert ix t2 te))).
   apply (Forall2_impl_in  (TYPE ds ke te)); eauto.
   nforall. eauto.
 
-  (* Case "XProj". *)
-  (* eapply TYProj; eauto. spec IHx1 H5; eauto. *)
-  (* apply (Forall2_map_left (TYPE ds ke (insert ix t2 te))). *)
-  (* apply (Forall2_impl_in  (TYPE ds ke te)); eauto. *)
-  (* nforall. eauto. *)
-
   Case "XNFun".
   eapply TYNFun; eauto.
-  (* apply Forall_map. *)
-  (* eapply TYAlt; eauto. *)
   rewrite insert_app. auto.
 
   Case "XNApp".
@@ -596,6 +573,12 @@ Proof.
   eapply map_in_exists. auto.
   shift a. rip.
   eapply dcOfAlt_liftXA.
+
+  Case "XChoice".
+  eapply TYChoice; eauto.
+  apply (Forall2_map_left (TYPE ds ke (insert ix t2 te))).
+  apply (Forall2_impl_in  (TYPE ds ke te)); eauto.
+  repeat nforall. eauto.
 
   Case "XAlt".
   eapply TYAlt; eauto.

@@ -12,9 +12,9 @@ Require Import FiatFormal.Language.SubstTypeType.
 Theorem subst_type_exp_ix
   : forall ix ds ke te x1 t1 t2 k2,
     get ix ke = Some k2
- -> TYPE ds ke te x1 t1
- -> KIND (delete ix ke)  t2 k2
- -> TYPE ds (delete ix ke)     (substTE ix t2 te)
+    -> TYPE ds ke te x1 t1
+    -> KIND (delete ix ke)  t2 k2
+    -> TYPE ds (delete ix ke)     (substTE ix t2 te)
            (substTX ix t2 x1) (substTT ix t2 t1).
 Proof.
   intros. gen ix ds ke te t1 t2 k2.
@@ -31,28 +31,6 @@ Proof.
   apply TYVar.
   unfold substTE. eapply get_map. auto.
   eapply subst_type_type_ix; eauto.
-
-  (* Case "XLAM". *)
-  (*  simpl. apply TYLAM. *)
-  (*  rewrite delete_rewind. *)
-  (*  rewrite (liftTE_substTE 0 ix). *)
-  (*  eapply IHx1; eauto. *)
-  (*   apply liftTT_weaken. auto. *)
-
-  (* Case "XAPP". *)
-  (*  rewrite (substTT_substTT 0 ix). *)
-  (*  apply TYAPP. *)
-  (*   simpl. eapply (IHx1 ix) in H6; eauto. *)
-  (*   simpl. eapply subst_type_type_ix; eauto. *)
-
-  Case "XLam".
-  simpl. apply TYLam.
-  eapply subst_type_type_ix; eauto.
-  unfold substTE. rewrite map_rewind.
-  assert ( map (substTT ix t2) (te :> t)
-           = substTE ix t2 (te :> t)). auto.
-  rewrite H0.
-  eapply IHx1; eauto.
 
   Case "XApp".
   eapply TYApp.
@@ -132,6 +110,25 @@ Proof.
   eapply map_in_exists. auto.
   shift a. rip.
   eapply dcOfAlt_substTA.
+
+  Case "XChoice".
+  eapply TYChoice; eauto.
+  assert (t1 = substTT ix t2 t1).
+  nforall. apply get_in in H11.
+  spec H7 H11.
+  apply simpleSubstEq; auto.
+  rewrite <- H0; auto.
+  eapply subst_type_type_ix; eauto.
+
+  apply (Forall2_map_left (TYPE ds (delete ix ke) (substTE ix t2 te))).
+  apply (Forall2_impl_in  (TYPE ds ke te)); eauto.
+  nforall; eauto.
+  intros. apply In_tl in H3. spec H7 H3.
+  assert (y = substTT ix t2 y).
+  apply simpleSubstEq; auto.
+  rewrite H5.
+  nforall.
+  eapply H; eauto.
 
   Case "XAlt".
   assert (ts = map (substTT ix t2) ts).

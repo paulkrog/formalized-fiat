@@ -70,11 +70,11 @@ Proof.
   Case "XVar".
   lift_cases. exfalso. eapply get_above_false.
   rewrite <- H0 in l. eauto. eauto. reflexivity.
-  Case "XLam".
-  spec IHx H8. rewrite <- IHx; auto. simpl; auto.
+
   Case "XApp".
   erewrite <- IHx1; eauto.
   erewrite <- IHx2; eauto.
+
   Case "XTup".
   invert_exp_type.
   f_equal. (* erewrite <- H2; eauto. *)
@@ -83,7 +83,6 @@ Proof.
   pose proof (Forall2_exists_left _ _ _ _ H H7).
   dest y. spec H2 H0. spec H2 H1. auto.
   rewrite <- H.
-
   assert (l0 = map (liftXX 1 n) l0).
   nforall. assert (map (fun b => b) l0 = l0).
   rewrite <- map_id. auto. rewrite <- H0.
@@ -118,7 +117,6 @@ Proof.
   dest y. assert (x0 = liftXX 1 n x0) by eauto.
   rewrite <- H5.
   assert (l0 = map (liftXX 1 n) l0).
-
   assert (map (fun b => b) l0 = l0).
   rewrite <- map_id. auto. rewrite <- H6.
   rewrite map_map.
@@ -142,7 +140,6 @@ Proof.
   dest y. eapply H2; eauto. rewrite <- H.
   repeat nforall.
   assert (l0 = map (liftXX 1 n) l0).
-
   assert (map (fun b => b) l0 = l0).
   rewrite <- map_id. auto. rewrite <- H0.
   rewrite map_map.
@@ -164,7 +161,6 @@ Proof.
   spec H6 H0. eapply H2; eauto.
   rewrite <- H0.
   assert (l0 = map (liftXA 1 n) l0).
-
   assert (map (fun b => b) l0 = l0).
   rewrite <- map_id. auto. rewrite <- H4.
   rewrite map_map.
@@ -172,6 +168,24 @@ Proof.
   spec H3 H8.
   assert (In a0 (l0 :> a)) by auto.
   spec H6 H9. eapply H3; eauto. rewrite <- H4; auto.
+
+  Case "XChoice".
+  invert_exp_type.
+  assert (x = liftXX 1 n x).
+  assert (In x (l0 :> x)) by auto.
+  pose proof (Forall2_exists_left _ _ _ _ H H14).
+  dest y. eapply H2; eauto. rewrite <- H.
+  repeat nforall.
+  assert (l0 = map (liftXX 1 n) l0).
+  assert (map (fun b => b) l0 = l0).
+  rewrite <- map_id. auto. rewrite <- H0.
+  rewrite map_map.
+  apply map_ext_in; intros.
+  spec H3 H4.
+  assert (In a (l0 :> x)) by auto.
+  pose proof (Forall2_exists_left _ _ _ _ H5 H14).
+  destruct H8. eapply H3; eauto.
+  rewrite <- H0; auto.
 
   Case "AAlt".
   assert (x = liftXX 1 (n + length ts) x).
@@ -200,6 +214,11 @@ Proof.
  eapply exps_ctx_Forall2_swap. eauto. (* why can't this be sequenced? *)
  apply IHHS. auto.
 
+ SCase "XChoice".
+ eapply TYChoice; eauto.
+ eapply exps_ctx_Forall2_swap. eauto.
+ apply IHHS. auto.
+
  SCase "Tup".
  eapply TYTup; eauto.
  eapply exps_ctx_Forall2_swap. eauto. (* why can't this be sequenced? *)
@@ -209,9 +228,6 @@ Proof.
  eapply TYNApp; eauto.
  eapply exps_ctx_Forall2_swap. eauto. (* why can't this be sequenced? *)
  apply IHHS. auto.
-
- Case "EsLamApp".
- eapply subst_value_value; eauto.
 
  Case "EsFixApp".
  eapply subst_value_value; eauto.
@@ -231,7 +247,16 @@ Proof.
  (* assert (tsArgs = tsArgs0). *)
  lets D: getAlt_ctorArgTypesMatchDataDef H4 H7 H0. auto.
  subst. auto.
-Qed.
+
+ Case "EsChoice".
+ pose proof (Forall2_get_get_left _ _ _ _ _ H15 H3).
+ dest y.
+
+ (* apply get_in in H3. *)
+ (* pose proof (Forall2_exists_left_in _ _ _ _ H3 H15). *)
+ (* destruct H4 as [y [INY TYV]]. *)
+Admitted.
+(* Qed. *)
 
 
 (* When we multi-step evaluate some expression,

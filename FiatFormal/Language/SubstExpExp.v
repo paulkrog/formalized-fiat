@@ -38,23 +38,6 @@ Proof.
   simpl. nnat. apply get_delete_below. omega.
   auto.
 
-  (* Case "XLAM". *)
-  (*  eapply (IHx1 ix) in H5. *)
-  (*  apply TYLAM. *)
-  (*   unfold liftTE. rewrite map_delete. eauto. *)
-  (*   eapply get_map. eauto. *)
-  (*   unfold liftTE. rewrite <- map_delete. *)
-  (*    assert (map (liftTT 0) (delete ix te) = liftTE 0 (delete ix te)). *)
-  (*     unfold liftTE. auto. rewrite H0. clear H0. *)
-  (*    apply type_kienv_weaken. auto. *)
-
-  Case "XLam".
-  apply TYLam.
-  auto.
-  rewrite delete_rewind.
-  eapply IHx1; eauto.
-  simpl. apply type_tyenv_weaken. auto.
-
   Case "XTup".
   apply TYTup.
   apply (Forall2_map_left (TYPE ds ke (delete ix te))).
@@ -112,6 +95,11 @@ Proof.
   shift a. rip.
   eapply dcOfAlt_substXA.
 
+  Case "XChoice".
+  eapply TYChoice; eauto.
+  apply (Forall2_map_left (TYPE ds ke (delete ix te))).
+  apply (Forall2_impl_in  (TYPE ds ke te)); eauto.
+  repeat nforall; eauto.
 
   Case "XAlt".
   assert (ts = map (substTT ix t2) ts).
@@ -144,24 +132,24 @@ Theorem subst_exp_exp_list
     -> TYPE ds ks (te >< ts) x1 t1
     -> TYPE ds ks te (substXXs 0 xs x1) t1.
 Proof.
- intros ds ks te x1 xs t1 ts HF HT.
- gen ts ks x1.
- induction xs; intros; invert_exp_type.
+  intros ds ks te x1 xs t1 ts HF HT.
+  gen ts ks x1.
+  induction xs; intros; invert_exp_type.
 
- - Case "base case".
-   destruct ts.
-   + simpl. auto.
-   + nope.
+  - Case "base case".
+    destruct ts.
+    + simpl. auto.
+    + nope.
 
- - Case "step case".
-   simpl.
-   destruct ts.
-   + nope.
-   + inverts HF.
-     eapply IHxs.
-     * eauto.
-     * simpl in HT.
-       eapply subst_value_value.
+  - Case "step case".
+    simpl.
+    destruct ts.
+    + nope.
+    + inverts HF.
+      eapply IHxs.
+      * eauto.
+      * simpl in HT.
+        eapply subst_value_value.
         eauto.
         rrwrite (length xs = length ts).
         eapply type_tyenv_weaken_append. auto.
