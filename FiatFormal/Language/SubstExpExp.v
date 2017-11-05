@@ -54,7 +54,7 @@ Proof.
 
   Case "XNApp".
   eapply TYNApp.
-  spec IHx1 H8.
+  spec IHx1 H7.
   eapply IHx1; eauto.
   apply (Forall2_map_left (TYPE ds ke (delete ix te))).
   apply (Forall2_impl_in (TYPE ds ke te)); eauto.

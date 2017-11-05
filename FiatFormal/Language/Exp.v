@@ -16,7 +16,7 @@ Inductive exp : Type :=
  (* Data Types *)
  | XCon   : datacon -> list exp -> exp
  | XMatch : exp     -> list alt -> exp
- | XChoice : ty -> proofcon -> list exp -> exp
+ | XChoice : ty -> propcon -> list exp -> exp
 
  (* Alternatives *)
 with alt     : Type :=

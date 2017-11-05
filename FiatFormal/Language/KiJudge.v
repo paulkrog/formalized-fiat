@@ -39,10 +39,7 @@ Inductive KIND : kienv -> ty -> ki -> Prop :=
  | KINFun : forall ke ts tRes,
      KIND ke tRes KStar
      -> Forall (fun t => KIND ke t KStar) ts
-     -> KIND ke (TNFun ts tRes) KStar
-
- | KIProp : forall ke pc,
-     KIND ke (TProp pc) KStar.
+     -> KIND ke (TNFun ts tRes) KStar.
 Hint Constructors KIND.
 
 Ltac inverts_kind :=

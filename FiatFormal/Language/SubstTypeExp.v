@@ -34,8 +34,8 @@ Proof.
 
   Case "XApp".
   eapply TYApp.
-  eapply IHx1_1 in H7; eauto.
-  eapply IHx1_2 in H9; eauto.
+  eapply IHx1_1 in H6; eauto.
+  eapply IHx1_2 in H8; eauto.
 
   Case "XTup".
   apply TYTup.
@@ -47,14 +47,14 @@ Proof.
 
   Case "XProj".
   eapply TYProj; simpl; eauto.
-  spec IHx1 H7. simpl in *; eauto.
+  spec IHx1 H6. simpl in *; eauto.
 
   Case "XNFun".
   eapply TYNFun; eauto.
   apply Forall_map.
   repeat nforall; intros.
   eapply subst_type_type_ix; eauto.
-  spec IHx1 H9.
+  spec IHx1 H8.
   unfold substTE in *.
   rewrite <- map_app; eauto.
 
@@ -114,8 +114,8 @@ Proof.
   Case "XChoice".
   eapply TYChoice; eauto.
   assert (t1 = substTT ix t2 t1).
-  nforall. apply get_in in H11.
-  spec H7 H11.
+  nforall. apply get_in in H10.
+  spec H7 H10.
   apply simpleSubstEq; auto.
   rewrite <- H0; auto.
   eapply subst_type_type_ix; eauto.

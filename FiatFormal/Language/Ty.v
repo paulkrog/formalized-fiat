@@ -30,9 +30,7 @@ Inductive ty  : Type :=
  | TFun    : ty  -> ty -> ty      (* Function type constructor. *)
  | TExists : ty -> ty
  | TNProd   : list ty -> ty
- | TNFun    : list ty -> ty -> ty
- | TProp    : propcon -> ty.
-
+ | TNFun    : list ty -> ty -> ty.
 Hint Constructors ty.
 
 Theorem ty_ind :
@@ -44,11 +42,10 @@ Theorem ty_ind :
     -> (forall t, PT t -> PT (TExists t))
     -> (forall ts, Forall PT ts -> PT (TNProd ts))
     -> (forall ts tRes, Forall PT ts -> PT tRes -> PT (TNFun ts tRes))
-    -> (forall pc, PT (TProp pc))
     -> forall t, PT t.
 Proof.
   intros PT.
-  intros tcon tvar tfun texists tnprod tnfun pcon.
+  intros tcon tvar tfun texists tnprod tnfun.
   refine (fix IHT t : PT t := _).
   intros.
   case t; intros.
@@ -67,9 +64,6 @@ Proof.
   apply tnfun.  induction l. apply Forall_nil. apply Forall_cons. apply IHT. Guarded. apply IHl. Guarded.
   apply IHT.
   Guarded.
-  Case "TProp".
-  apply pcon.
-  Guarded.
 Qed.
 Unset Elimination Schemes.
 
@@ -81,15 +75,6 @@ Hint Constructors datacon.
 Fixpoint datacon_beq t1 t2 :=
   match t1, t2 with
   | DataCon n1, DataCon n2 => beq_nat n1 n2
-  end.
-
-Inductive proofcon : Type :=
-| ProofCon : nat -> proofcon.
-Hint Constructors proofcon.
-
-Fixpoint proofcon_beq t1 t2 :=
-  match t1, t2 with
-  | ProofCon n1, ProofCon n2 => beq_nat n1 n2
   end.
 
 (* Definitions.
@@ -109,17 +94,11 @@ Inductive def  : Type :=
     -> def
 
 (* Definition of a proposition type constructor *)
-| DefPropType
-  : propcon         (* name of proposition type constructor *)
-    -> list proofcon (* proof constructors that build proof of this proposition *)
-    -> def
-
-(* Definition of a proof constructor *)
-| DefProof
-  : proofcon        (* name of proof constructor *)
-    -> list ty       (* types of arguments *)
-    -> ty            (* type of constructed proof *)
+| DefProp
+  : propcon         (* name of proposition *)
+    -> list ty       (* type signature of proposition *)
     -> def.
+
 Hint Constructors def.
 
 (* Definition environment.
@@ -157,7 +136,7 @@ Fixpoint getDataDef (dc: datacon) (ds: defs) : option def :=
    Returns None if it's not in the list. *)
 Fixpoint getPropDef (pc: propcon) (ds: defs) : option def :=
  match ds with
- | ds' :> DefPropType pc' _ as d
+ | ds' :> DefProp pc' _ as d
  => if propcon_beq pc pc'
      then  Some d
      else  getPropDef pc ds'
@@ -165,20 +144,6 @@ Fixpoint getPropDef (pc: propcon) (ds: defs) : option def :=
  | ds' :> _ => getPropDef pc ds'
  | Empty    => None
  end.
-
-(* Lookup the def of a given proof constructor.
-   Returns None if it's not in the list. *)
-Fixpoint getProofDef (pc: proofcon) (ds: defs) : option def :=
- match ds with
- | ds' :> DefProof pc' _ _ as d
- => if proofcon_beq pc pc'
-     then  Some d
-     else  getProofDef pc ds'
-
- | ds' :> _ => getProofDef pc ds'
- | Empty    => None
- end.
-
 
 (* Boolean equality for data constructors. *)
 Lemma datacon_beq_eq
@@ -224,9 +189,7 @@ Inductive simpleType : ty -> Prop :=
 | Simp_TNFun : forall ts tRes,
     simpleType tRes
     -> Forall (simpleType) ts
-    -> simpleType (TNFun ts tRes)
-| Simp_TProp : forall pc,
-    simpleType (TProp pc).
+    -> simpleType (TNFun ts tRes).
 Hint Constructors simpleType.
 
 Inductive wfT : kienv -> ty -> Prop :=
@@ -248,17 +211,7 @@ Inductive wfT : kienv -> ty -> Prop :=
     -> wfT ke (TNFun ts tRes)
 | WfT_TExists : forall ke t,
     wfT (ke :> KStar) t
-    -> wfT ke (TExists t)
-| WfT_TProp : forall ke pc,
-    wfT ke (TProp pc)
-
-with wfDef : kienv -> def -> Prop := (* unused! *)
-     | WfD : forall ts tRes dc ke,
-         wfT ke tRes
-         -> Forall (wfT ke) ts
-         -> wfDef ke (DefData dc ts tRes).
-
-Hint Constructors wfDef.
+    -> wfT ke (TExists t).
 Hint Constructors wfT.
 
 
@@ -292,8 +245,6 @@ Fixpoint liftTT (d: nat) (tt: ty) : ty :=
 
   | TNFun ts tRes
     => TNFun (map (liftTT d) ts) (liftTT d tRes)
-
-  | TProp _ => tt
   end.
 Hint Unfold liftTT.
 
@@ -379,9 +330,6 @@ Fixpoint substTT (d: nat) (u: ty) (tt: ty) : ty
 
     | TNFun ts tRes
       => TNFun (map (substTT d u) ts) (substTT d u tRes)
-
-    | TProp _
-      => tt
   end.
 
 Lemma simpleSubstEq :

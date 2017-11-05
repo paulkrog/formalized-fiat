@@ -6,50 +6,50 @@ Require Export FiatFormal.Language.Exp.
 
 
 (* Type judgement assigns a type to an expression. *)
-Inductive TYPE : defs -> kienv -> tyenv -> exp -> ty -> Prop :=
+Inductive TYPE (ds : defs) : kienv -> tyenv -> exp -> ty -> Prop :=
  | TYVar
-   :  forall i ds ke te t,
+   : forall i ke te t,
      get i te = Some t
    -> KIND ke t  KStar
    -> TYPE ds ke te (XVar i) t
 
  | TYApp
-   :  forall ds ke te x1 x2 t11 t12,
+   : forall ke te x1 x2 t11 t12,
      TYPE ds ke te x1 (TFun t11 t12)
    -> TYPE ds ke te x2 t11
    -> TYPE ds ke te (XApp x1 x2) t12
 
  | TYTup
-   : forall ds ke te xs ts,
+   : forall ke te xs ts,
      Forall2 (TYPE ds ke te) xs ts
      -> TYPE ds ke te (XTup xs) (TNProd ts)
 
  | TYNFun
-   : forall ds ke te x ts tRes,
+   : forall ke te x ts tRes,
      Forall (fun t => KIND ke t KStar) ts
      -> TYPE ds ke (te >< ts) x tRes
      -> TYPE ds ke te (XNFun ts x) (TNFun ts tRes)
 
  | TYProj
-   : forall ds ke te n x ts tRes,
+   : forall ke te n x ts tRes,
      TYPE ds ke te x (TNProd ts)
      -> get n ts = Some tRes
      -> TYPE ds ke te (XProj n x) tRes
 
  | TYNApp
-   : forall ds ke te x xArgs ts tRes,
+   : forall ke te x xArgs ts tRes,
      TYPE ds ke te x (TNFun ts tRes)
      -> Forall2 (TYPE ds ke te) xArgs ts
      -> TYPE ds ke te (XNApp x xArgs) tRes
 
  | TYFix
-   : forall ds ke te t1 t2 x,
+   : forall ke te t1 t2 x,
      KIND ke t1 KStar
      -> TYPE ds ke (te :> (TFun t1 t2) :> t1) x t2
      -> TYPE ds ke te (XFix t1 t2 x) (TFun t1 t2)
 
  | TYCon
-   : forall ds ke te dc xs tsArgs tc dcs,
+   : forall ke te dc xs tsArgs tc dcs,
      getDataDef dc ds = Some (DefData dc tsArgs (TCon tc))
      -> getTypeDef tc ds = Some (DefDataType tc dcs)
      -> Forall (simpleType) tsArgs
@@ -59,7 +59,7 @@ Inductive TYPE : defs -> kienv -> tyenv -> exp -> ty -> Prop :=
 
  (* Case Expressions *)
  | TYMatch
-   : forall ds ke te xObj tcPat tRes alts dcs,
+   : forall ke te xObj tcPat tRes alts dcs,
      (* check types of expression and alternatives *)
      TYPE ds ke te xObj (TCon tcPat)
      -> Forall (fun alt => TYPEA ds ke te alt (TCon tcPat) tRes) alts
@@ -71,21 +71,21 @@ Inductive TYPE : defs -> kienv -> tyenv -> exp -> ty -> Prop :=
      -> TYPE ds ke te (XMatch xObj alts) tRes
 
  | TYChoice
-   : forall ds ke te t pc xs tsArgs propType,
+   : forall ke te tRes pc xs tsArgs,
      (* get proof constructor definition *)
-     getProofDef pc ds = Some (DefProof pc tsArgs propType)
+     getPropDef pc ds = Some (DefProp pc tsArgs)
      -> Forall (simpleType) tsArgs
-     (* require at least one arg type for any proof *)
-     -> get 0 tsArgs = Some t
-     -> KIND ke t KStar
+     (* require at least one arg type for any prop *)
+     -> get 0 tsArgs = Some tRes
+     -> KIND ke tRes KStar
      (* check type of annotation plus types of expressions
         match signature of proof constructor *)
      -> Forall2 (TYPE ds ke te) xs (tl tsArgs)
-     -> TYPE ds ke te (XChoice t pc xs) t
+     -> TYPE ds ke te (XChoice tRes pc xs) tRes
 
-with TYPEA : defs -> kienv -> tyenv -> alt -> ty -> ty -> Prop :=
+with TYPEA (ds : defs) : kienv -> tyenv -> alt -> ty -> ty -> Prop :=
  | TYAlt
-   : forall ds ke te x1 t1 dc tsArgs tcPat,
+   : forall ke te x1 t1 dc tsArgs tcPat,
      getDataDef dc ds = Some (DefData dc tsArgs (TCon tcPat))
      -> Forall (simpleType) tsArgs
      (* note: checking tRes well kinded is implicit in TYMatch, I *)
@@ -193,13 +193,13 @@ Proof.
                    -> KIND ke tRes KStar); intros; try (first [inverts H | inverts H0]); eauto.
 
  Case "???".
- eapply IHx1 in H5. inverts H5. auto.
+ eapply IHx1 in H4. inverts H4. auto.
 
  Case "XTup".
- inverts H0. inverts H4.
+ inverts H0. inverts H3.
  apply KINProd; auto.
  inverts keep H0.
- inverts keep H6.
+ inverts keep H5.
  apply KINProd. apply Forall_cons.
  eapply H1; eauto.
  rewrite Forall_forall; intros.
@@ -210,18 +210,18 @@ Proof.
  spec H2 INx' TYx'; auto.
 
  Case "XProj".
- spec IHx H5.
+ spec IHx H4.
  inverts_kind.
  nforall.
- pose proof (get_in _ _ _ _ H7).
+ pose proof (get_in _ _ _ _ H6).
  spec H1 H; auto.
 
  Case "XNApp".
  inverts keep H0.
- inverts keep H7.
- spec IHx H5. inverts_kind; auto.
+ inverts keep H6.
+ spec IHx H4. inverts_kind; auto.
  inverts keep H0.
- spec IHx H7.
+ spec IHx H6.
  inverts_kind; auto.
 
  Case "XCon".
@@ -265,8 +265,8 @@ Proof.
 
   Case "XApp".
   inverts H.
-  apply IHx1 in H5.
-  apply IHx2 in H7.
+  apply IHx1 in H4.
+  apply IHx2 in H6.
   auto.
 
   Case "XTup".
@@ -274,7 +274,7 @@ Proof.
   nforall.
   constructor.
   rewrite Forall_forall; intros.
-  pose proof (Forall2_exists_left_in _ _ _ _ H1 H5) as [y [INy TYx]].
+  pose proof (Forall2_exists_left_in _ _ _ _ H1 H4) as [y [INy TYx]].
   eapply H; eauto.
 
   Case "XProj".
@@ -286,18 +286,18 @@ Proof.
   inverts keep H.
   constructor.
   apply Forall_forall; intros.
-  nforall. spec H5 H0.
+  nforall. spec H4 H0.
   eapply kind_wfT; eauto.
-  spec IHx H7; auto.
+  spec IHx H6; auto.
 
   Case "XNApp".
   inverts keep H0.
-  spec IHx H6.
+  spec IHx H5.
   constructor; auto.
   rewrite Forall_forall; intros.
   repeat nforall.
   spec H H1.
-  pose proof (Forall2_exists_left_in _ _ _ _ H1 H8) as [y [INy TYx]].
+  pose proof (Forall2_exists_left_in _ _ _ _ H1 H7) as [y [INy TYx]].
   eapply H; eauto.
 
   Case "XFix".
@@ -312,7 +312,7 @@ Proof.
   inverts keep H0.
   constructor.
   repeat nforall. intros.
-  pose proof (Forall2_exists_left_in _ _ _ _ H1 H11) as [y [INy TYx]].
+  pose proof (Forall2_exists_left_in _ _ _ _ H1 H10) as [y [INy TYx]].
   eapply H; eauto.
 
   Case "XMatch".
@@ -327,7 +327,7 @@ Proof.
   inverts keep H0.
   constructor. eapply kind_wfT; eauto.
   repeat nforall. intros.
-  pose proof (Forall2_exists_left_in _ _ _ _ H1 H12) as [y [INy TYx]].
+  pose proof (Forall2_exists_left_in _ _ _ _ H1 H11) as [y [INy TYx]].
   eapply H; eauto.
 
   Case "Alt".
@@ -376,8 +376,8 @@ Proof.
 
   Case "XApp".
   eapply TYApp.
-  eapply IHx1_1 in H5. simpl in H5. eauto.
-  eapply IHx1_2 in H7. eauto.
+  eapply IHx1_1 in H4. simpl in H4. eauto.
+  eapply IHx1_2 in H6. eauto.
 
   Case "XTup".
   eapply TYTup; simpl; auto.
@@ -389,14 +389,14 @@ Proof.
 
   Case "XProj".
   eapply TYProj; simpl; eauto.
-  spec IHx1 H5. simpl in *; eauto.
+  spec IHx1 H4. simpl in *; eauto.
 
   Case "XNFun".
   eapply TYNFun; eauto.
   apply Forall_map.
   repeat nforall; intros.
   apply liftTT_insert; auto.
-  spec IHx1 H7.
+  spec IHx1 H6.
   unfold liftTE in *.
   rewrite <- map_app; eauto.
 
@@ -457,8 +457,8 @@ Proof.
   Case "XChoice".
   eapply TYChoice; eauto.
   assert (t1 = liftTT ix t1).
-  nforall. apply get_in in H9.
-  spec H5 H9.
+  nforall. apply get_in in H8.
+  spec H5 H8.
   apply simpleLiftEq; auto.
   rewrite <- H0; auto.
   apply liftTT_insert; auto.
@@ -478,10 +478,10 @@ Proof.
   assert (map (liftTT ix) ts = ts).
   repeat nforall. rewrite <- map_id.
   apply map_ext_in; intros. symmetry.
-  spec H7 H.
-  apply (simpleLiftEq _ _ H7).
+  spec H6 H.
+  apply (simpleLiftEq _ _ H6).
   rewrite H; auto.
-  pose proof (simpleLiftMapEq _ ix H7).
+  pose proof (simpleLiftMapEq _ ix H6).
   rewrite <- H; auto.
 
   rewrite Forall_forall; intros.
@@ -489,7 +489,7 @@ Proof.
   pose proof map_in_exists.
   apply H0 in H as [y [FY INY]].
   rewrite <- FY.
-  apply liftTT_insert. apply H10; auto.
+  apply liftTT_insert. apply H9; auto.
 
   unfold liftTE in *.
   rewrite <- map_app.

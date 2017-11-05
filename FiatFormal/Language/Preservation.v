@@ -80,7 +80,7 @@ Proof.
   f_equal. (* erewrite <- H2; eauto. *)
   assert (x = liftXX 1 n x).
   assert (In x (l0 :> x)) by auto.
-  pose proof (Forall2_exists_left _ _ _ _ H H7).
+  pose proof (Forall2_exists_left _ _ _ _ H H6).
   dest y. spec H2 H0. spec H2 H1. auto.
   rewrite <- H.
   assert (l0 = map (liftXX 1 n) l0).
@@ -90,7 +90,7 @@ Proof.
   apply map_ext_in; intros.
   spec H3 H4.
   apply in_cons with (a:=x) in H4.
-  pose proof (Forall2_exists_left _ _ _ _ H4 H7).
+  pose proof (Forall2_exists_left _ _ _ _ H4 H6).
   destruct H5.
   eapply H3; eauto.
   rewrite <- H0; auto.
@@ -113,7 +113,7 @@ Proof.
   eapply IHx; eauto. rewrite <- H; auto.
   nforall.
   assert (In x0 (l0 :> x0)) by auto.
-  pose proof (Forall2_exists_left _ _ _ _ H0 H10).
+  pose proof (Forall2_exists_left _ _ _ _ H0 H9).
   dest y. assert (x0 = liftXX 1 n x0) by eauto.
   rewrite <- H5.
   assert (l0 = map (liftXX 1 n) l0).
@@ -121,9 +121,9 @@ Proof.
   rewrite <- map_id. auto. rewrite <- H6.
   rewrite map_map.
   apply map_ext_in; intros.
-  spec H3 H7.
+  spec H3 H8.
   assert (In a (l0 :> x0)) by auto.
-  pose proof (Forall2_exists_left _ _ _ _ H9 H10).
+  pose proof (Forall2_exists_left _ _ _ _ H10 H9).
   destruct H11. eapply H3; eauto.
   rewrite <- H6; auto.
 
@@ -136,7 +136,7 @@ Proof.
   invert_exp_type.
   assert (x = liftXX 1 n x).
   assert (In x (l0 :> x)) by auto.
-  pose proof (Forall2_exists_left _ _ _ _ H H13).
+  pose proof (Forall2_exists_left _ _ _ _ H H12).
   dest y. eapply H2; eauto. rewrite <- H.
   repeat nforall.
   assert (l0 = map (liftXX 1 n) l0).
@@ -146,7 +146,7 @@ Proof.
   apply map_ext_in; intros.
   spec H3 H4.
   assert (In a (l0 :> x)) by auto.
-  pose proof (Forall2_exists_left _ _ _ _ H8 H13).
+  pose proof (Forall2_exists_left _ _ _ _ H8 H12).
   destruct H9. eapply H3; eauto.
   rewrite <- H0; auto.
 
@@ -173,7 +173,7 @@ Proof.
   invert_exp_type.
   assert (x = liftXX 1 n x).
   assert (In x (l0 :> x)) by auto.
-  pose proof (Forall2_exists_left _ _ _ _ H H14).
+  pose proof (Forall2_exists_left _ _ _ _ H H13).
   dest y. eapply H2; eauto. rewrite <- H.
   repeat nforall.
   assert (l0 = map (liftXX 1 n) l0).
@@ -183,7 +183,7 @@ Proof.
   apply map_ext_in; intros.
   spec H3 H4.
   assert (In a (l0 :> x)) by auto.
-  pose proof (Forall2_exists_left _ _ _ _ H5 H14).
+  pose proof (Forall2_exists_left _ _ _ _ H5 H13).
   destruct H8. eapply H3; eauto.
   rewrite <- H0; auto.
 
@@ -197,12 +197,12 @@ Qed.
 (* When a well typed expression transitions to the next state *)
 (*    then its type is preserved. *)
 Theorem preservation
-  : forall ds x x' t,
+  : forall pb ds pbOK x x' t,
     TYPE ds nil nil x t
-    -> STEP x x'
+    -> STEP pb ds pbOK x x'
     -> TYPE ds nil nil x' t.
 Proof.
- intros ds x x' t HT HS. gen ds t.
+ intros pb ds pbOK x x' t HT HS. gen t.
  induction HS; intros; invert_exp_type; eauto.
 
  (* Evaluation in an arbitrary context. *)
@@ -249,45 +249,43 @@ Proof.
  subst. auto.
 
  Case "EsChoice".
- pose proof (Forall2_get_get_left _ _ _ _ _ H15 H3).
- dest y.
+ spec pbOK H0.
+ apply pbOK in H4.
+ assert (get 0 (vs :> v) = Some v) by auto.
+ pose proof (Forall2_get_get_same _ _ _ _ _ _ H4 H1 H8).
+ eauto.
+Qed.
 
- (* apply get_in in H3. *)
- (* pose proof (Forall2_exists_left_in _ _ _ _ H3 H15). *)
- (* destruct H4 as [y [INY TYV]]. *)
-Admitted.
+
+(* (* When we multi-step evaluate some expression, *)
+(*    then the result has the same type as the original. *)
+(*  *) *)
+(* Lemma preservation_steps *)
+(*   : forall ds x1 t1 x2, *)
+(*     TYPE ds nil nil x1 t1 *)
+(*     -> STEPS x1 x2 *)
+(*     -> TYPE ds nil nil x2 t1. *)
+(* Proof. *)
+(*  intros. *)
+(*  induction H0; eauto. *)
+(*   eapply preservation; eauto. *)
 (* Qed. *)
 
 
-(* When we multi-step evaluate some expression,
-   then the result has the same type as the original.
- *)
-Lemma preservation_steps
-  : forall ds x1 t1 x2,
-    TYPE ds nil nil x1 t1
-    -> STEPS x1 x2
-    -> TYPE ds nil nil x2 t1.
-Proof.
- intros.
- induction H0; eauto.
-  eapply preservation; eauto.
-Qed.
-
-
-(* When we multi-step evaluate some expression,
-   then the result has the same type as the original.
-   Using the left-linearised form for the evaluation.
- *)
-Lemma preservation_stepsl
-  : forall ds x1 t1 x2,
-    TYPE ds nil nil x1 t1
-    -> STEPSL x1 x2
-    -> TYPE ds nil nil x2 t1.
-Proof.
- intros.
- induction H0.
-  auto.
-  apply IHSTEPSL.
-  eapply preservation.
-   eauto. auto.
-Qed.
+(* (* When we multi-step evaluate some expression, *)
+(*    then the result has the same type as the original. *)
+(*    Using the left-linearised form for the evaluation. *)
+(*  *) *)
+(* Lemma preservation_stepsl *)
+(*   : forall ds x1 t1 x2, *)
+(*     TYPE ds nil nil x1 t1 *)
+(*     -> STEPSL x1 x2 *)
+(*     -> TYPE ds nil nil x2 t1. *)
+(* Proof. *)
+(*  intros. *)
+(*  induction H0. *)
+(*   auto. *)
+(*   apply IHSTEPSL. *)
+(*   eapply preservation. *)
+(*    eauto. auto. *)
+(* Qed. *)

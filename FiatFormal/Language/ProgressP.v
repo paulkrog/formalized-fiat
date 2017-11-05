@@ -8,11 +8,11 @@ Require Import FiatFormal.Language.Progress.
 
 (* A well typed program is either a value, can take a step, or has a choice. *)
 Theorem progressP
-  : forall ds p,
+  : forall pb ds pbOK p,
     (exists t, TYPEPROG ds nil nil p t)
-    -> valueP p \/ (exists p', STEPP p p') \/ hasChoiceP p.
+    -> valueP p \/ (exists p', STEPP pb ds pbOK p p') \/ hasChoiceP p.
 Proof.
-  intros. induction p.
+  intros. gen pb ds pbOK. induction p; intros.
   Case "PLet".
   right. left.
   destruct H as [tp].
@@ -24,7 +24,7 @@ Proof.
   inverts H.
   invert_prog_type.
   rename x into t.
-  pose proof (progress ds e).
+  pose proof (progress pb ds pbOK e).
   destruct H as [| []];
 
   eauto.
