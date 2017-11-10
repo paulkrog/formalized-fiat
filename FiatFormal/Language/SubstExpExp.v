@@ -4,7 +4,7 @@ Require Import FiatFormal.Language.SubstTypeExp.
 Require Import FiatFormal.Language.TyJudge.
 
 
-(* Substitution of Values in Values preserves Typing ****************)
+(* Substitution of Values in Values preserves Typing *)
 Theorem subst_value_value_ix
   : forall ds ix ke te x1 t1 x2 t2,
     get ix te = Some t2

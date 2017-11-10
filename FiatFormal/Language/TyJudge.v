@@ -1,3 +1,5 @@
+(* PMK TODO: remove unicode \tau in typing of programs (this will *)
+(* break some proofs) *)
 
 Require Import FiatFormal.Language.SubstTypeType.
 Require Export FiatFormal.Language.KiJudge.

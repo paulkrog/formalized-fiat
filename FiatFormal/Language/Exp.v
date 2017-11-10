@@ -1,3 +1,4 @@
+(* PMK TODO: improve proof with disgusting label *)
 
 Require Export FiatFormal.Language.TyEnv.
 Require Export FiatFormal.Language.Ty.
@@ -6,24 +7,25 @@ Require Export FiatFormal.Language.Ki.
 
 (* Expressions *)
 Inductive exp : Type :=
- | XVar  : nat -> exp             (* deBruijn indices *)
- | XApp  : exp -> exp -> exp      (* Value application *)
- | XTup   : list exp -> exp
- | XProj  : nat -> exp -> exp
- | XNFun  : list ty -> exp -> exp
- | XNApp  : exp -> list exp -> exp
- | XFix   : ty -> ty -> exp -> exp
+ | XVar  : nat -> exp               (* deBruijn indices *)
+ | XApp  : exp -> exp -> exp       (* Value application *)
+ | XTup   : list exp -> exp       (* Arity n tuples *)
+ | XProj  : nat -> exp -> exp        (* Projection *)
+ | XNFun  : list ty -> exp -> exp  (* Arity n functions *)
+ | XNApp  : exp -> list exp -> exp (* Arity n application *)
+ | XFix   : ty -> ty -> exp -> exp  (* Fixpoint *)
  (* Data Types *)
- | XCon   : datacon -> list exp -> exp
- | XMatch : exp     -> list alt -> exp
- | XChoice : ty -> propcon -> list exp -> exp
+ | XCon   : datacon -> list exp -> exp       (* Data constructor *)
+ | XMatch : exp     -> list alt -> exp       (* Match statement *)
+ | XChoice : ty -> propcon -> list exp -> exp (* Non-deterministic choice operator *)
 
  (* Alternatives *)
 with alt     : Type :=
- | AAlt   : datacon -> list ty  -> exp -> alt.
+ | AAlt   : datacon -> list ty  -> exp -> alt (* Branches of a match statement *).
 
 Hint Constructors alt.
 Hint Constructors exp.
+
 
 (* Get the data constructor of an alternative. *)
 Fixpoint dcOfAlt (aa: alt) : datacon :=
@@ -31,6 +33,7 @@ Fixpoint dcOfAlt (aa: alt) : datacon :=
  | AAlt dc _ _ => dc
  end.
 Hint Unfold dcOfAlt.
+
 
 (* Get the alternative body that matches a given constructor. *)
 Fixpoint getAlt (dc: datacon) (alts: list alt) {struct alts}
@@ -43,6 +46,7 @@ Fixpoint getAlt (dc: datacon) (alts: list alt) {struct alts}
      then Some (AAlt dc' tsArgs x)
      else getAlt dc alts'
  end.
+
 
 (* If we get a single alternative from a list,  *)
 (*    then that alternative was in the list. *)
@@ -60,6 +64,7 @@ Proof.
    inverts H.
    apply datacon_beq_eq in HeqX; auto.
 Qed.
+
 
 (* Given a data constructor, if one of the alternatives in a  *)
 (*    list matches that data constructor then we can get the other *)
@@ -113,7 +118,6 @@ Proof.
   refine (fix  IHX x : PX x := _
             with IHA a : PA a := _
                                    for  IHX).
-
   (* expressions *)
   case x; intros.
 
@@ -167,6 +171,8 @@ Proof.
   apply IHX.
 Qed.
 
+(* This is used in our modified statement
+   of progress for expressions. *)
 Inductive hasChoiceX : exp -> Prop :=
 | HcApp1  : forall x1 x2,
     hasChoiceX x1
@@ -256,14 +262,9 @@ Inductive wnfX : exp -> Prop :=
  | Wnf_XCon
    : forall dc xs,
      Forall wnfX xs
-     -> wnfX (XCon dc xs)
-
- (* | Wnf_XChoice *)
- (*   : forall t pc xs, *)
- (*     Forall wnfX xs *)
- (*     -> wnfX (XChoice t pc xs) *)
-.
+     -> wnfX (XCon dc xs).
 Hint Constructors wnfX.
+
 
 (* A well formed expression is closed under the given environments *)
 Inductive wfX : kienv -> tyenv -> exp -> Prop :=

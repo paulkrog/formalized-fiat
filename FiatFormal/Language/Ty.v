@@ -2,7 +2,7 @@
 Require Export FiatFormal.Language.Ki.
 
 
-(* Algebraic Data Type Constructors *)
+(* Data Type Constructors *)
 Inductive tycon : Type :=
  | TyConData   : nat -> tycon.
 Hint Constructors tycon.
@@ -12,6 +12,7 @@ Fixpoint tycon_beq t1 t2 :=
   | TyConData n1, TyConData n2 => beq_nat n1 n2
   end.
 
+(* Proposition constructors *)
 Inductive propcon : Type :=
 | PropCon : nat -> propcon.
 Hint Constructors propcon.
@@ -21,18 +22,29 @@ Fixpoint propcon_beq t1 t2 :=
   | PropCon n1, PropCon n2 => beq_nat n1 n2
   end.
 
+(* Data Constructors *)
+Inductive datacon : Type :=
+ | DataCon    : nat -> datacon.
+Hint Constructors datacon.
+
+Fixpoint datacon_beq t1 t2 :=
+  match t1, t2 with
+  | DataCon n1, DataCon n2 => beq_nat n1 n2
+  end.
 
 Unset Elimination Schemes.
 (* Type Expressions *)
 Inductive ty  : Type :=
- | TCon    : tycon -> ty         (* Data type constructor. *)
- | TVar    : nat -> ty             (* deBruijn index. *)
- | TFun    : ty  -> ty -> ty      (* Function type constructor. *)
- | TExists : ty -> ty
- | TNProd   : list ty -> ty
- | TNFun    : list ty -> ty -> ty.
+ | TCon    : tycon -> ty          (* Algebraic data type *)
+ | TVar    : nat -> ty              (* deBruijn index *)
+ | TFun    : ty  -> ty -> ty       (* Function type *)
+ | TExists : ty -> ty             (* Existential type *)
+ | TNProd   : list ty -> ty       (* Arity n product type  *)
+ | TNFun    : list ty -> ty -> ty. (* Arity n function type *)
 Hint Constructors ty.
 
+(* Need to prove induction principle by hand because of the presence
+of "list" in the definition of type *)
 Theorem ty_ind :
   forall
     (PT : ty -> Prop),
@@ -67,18 +79,9 @@ Proof.
 Qed.
 Unset Elimination Schemes.
 
-(* Data Constructors *)
-Inductive datacon : Type :=
- | DataCon    : nat -> datacon.
-Hint Constructors datacon.
-
-Fixpoint datacon_beq t1 t2 :=
-  match t1, t2 with
-  | DataCon n1, DataCon n2 => beq_nat n1 n2
-  end.
-
 (* Definitions.
-   Carries meta information about type and data constructors. *)
+   Carries meta information about type and data constructors
+   as well as proposition definitions. *)
 Inductive def  : Type :=
 (* Definition of a data type constructor *)
 | DefDataType
@@ -93,18 +96,16 @@ Inductive def  : Type :=
     -> ty        (* Type  of constructed data *)
     -> def
 
-(* Definition of a proposition type constructor *)
+(* Definition of a proposition constructor *)
 | DefProp
   : propcon         (* name of proposition *)
-    -> list ty       (* type signature of proposition *)
+    -> list ty       (* types of arguments *)
     -> def.
-
 Hint Constructors def.
 
 (* Definition environment.
-   Holds the definitions of all current type and data constructors. *)
+   Holds the definitions of all current type, data and proposition constructors. *)
 Definition defs  := list def.
-
 
 (* Lookup the def of a given type constructor.
    Returns None if it's not in the list. *)
@@ -132,7 +133,7 @@ Fixpoint getDataDef (dc: datacon) (ds: defs) : option def :=
  | Empty    => None
  end.
 
-(* Lookup the def of a given proposition type constructor.
+(* Lookup the def of a given proposition constructor.
    Returns None if it's not in the list. *)
 Fixpoint getPropDef (pc: propcon) (ds: defs) : option def :=
  match ds with
@@ -174,8 +175,9 @@ Proof.
   simpl in H. auto.
 Qed.
 
-
 (********************************************************************)
+(* This is used to restrict the possible types used to define algebraic *)
+(* data types as well as propositions. *)
 Inductive simpleType : ty -> Prop :=
 | Simp_TCon : forall tc,
     simpleType (TCon tc)
@@ -192,6 +194,7 @@ Inductive simpleType : ty -> Prop :=
     -> simpleType (TNFun ts tRes).
 Hint Constructors simpleType.
 
+(* Well-formed types (w.r.t kind environments) *)
 Inductive wfT : kienv -> ty -> Prop :=
 | WfT_TCon : forall ke tc,
     wfT ke (TCon tc)
@@ -214,12 +217,10 @@ Inductive wfT : kienv -> ty -> Prop :=
     -> wfT ke (TExists t).
 Hint Constructors wfT.
 
-
 (* A closed type is well formed under an empty kind environment. *)
 Definition closedT (tt: ty) : Prop
  := wfT nil tt.
 Hint Unfold closedT.
-
 
 (********************************************************************)
 (* Lifting of type indices in types.
@@ -248,6 +249,7 @@ Fixpoint liftTT (d: nat) (tt: ty) : ty :=
   end.
 Hint Unfold liftTT.
 
+(* Lifting a simple type does not change it *)
 Lemma simpleLiftEq :
   forall t d,
     simpleType t
@@ -304,7 +306,6 @@ Ltac lift_cases
      => case (le_gt_dec n n')
     end.
 
-
 (********************************************************************)
 (* Substitution for the outer-most binder in a type. *)
 Fixpoint substTT (d: nat) (u: ty) (tt: ty) : ty
@@ -332,6 +333,7 @@ Fixpoint substTT (d: nat) (u: ty) (tt: ty) : ty
       => TNFun (map (substTT d u) ts) (substTT d u tRes)
   end.
 
+(* Substituting into a simple type does not change it *)
 Lemma simpleSubstEq :
   forall t1 t2 d,
     simpleType t1
@@ -463,7 +465,6 @@ Proof.
   apply IHt1.
 Qed.
 
-
 (* Lifting after substitution *)
 Lemma liftTT_substTT
  :  forall n n' t1 t2
@@ -501,7 +502,6 @@ Proof.
   apply (Forall_in _ _ _ H H0).
   apply IHt1.
 Qed.
-
 
 (* Lifting after substitution, another way. *)
 Lemma liftTT_substTT'

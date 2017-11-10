@@ -19,12 +19,12 @@ Theorem subst_type_exp_ix
 Proof.
   intros. gen ix ds ke te t1 t2 k2.
   induction x1 using exp_mutind
-    with (PA := fun a => forall ix ds ke te tBuilds tRes t2 k2, (* dc tsArgs x, *)
+    with (PA := fun a => forall ix ds ke te tBuilds tRes t2 k2,
                     get ix ke = Some k2
-                    -> TYPEA ds ke te a (* (AAlt dc tsArgs x) *) tBuilds tRes
+                    -> TYPEA ds ke te a tBuilds tRes
                     -> KIND (delete ix ke) t2 k2
                     -> TYPEA ds (delete ix ke) (substTE ix t2 te)
-                            (substTA ix t2 a (* (AAlt dc tsArgs x) *)) (substTT ix t2 tBuilds) (substTT ix t2 tRes));
+                            (substTA ix t2 a) (substTT ix t2 tBuilds) (substTT ix t2 tRes));
     intros; simpl; inverts H0; eauto.
 
   Case "XVar".
