@@ -66,16 +66,14 @@ Proof.
   Case "TVar".
   apply tvar.
   Case "TFun".
-  Guarded.
-  apply tfun. apply IHT. apply IHT. Guarded.
+  apply tfun. apply IHT. apply IHT.
   Case "TExists".
-  apply texists. apply IHT. Guarded.
+  apply texists. apply IHT.
   Case "TNProd".
-  apply tnprod. induction l. apply Forall_nil. apply Forall_cons. apply IHT. Guarded. apply IHl. Guarded.
+  apply tnprod. induction l. apply Forall_nil. apply Forall_cons. apply IHT. apply IHl.
   Case "TNFun".
-  apply tnfun.  induction l. apply Forall_nil. apply Forall_cons. apply IHT. Guarded. apply IHl. Guarded.
+  apply tnfun.  induction l. apply Forall_nil. apply Forall_cons. apply IHT. apply IHl.
   apply IHT.
-  Guarded.
 Qed.
 Unset Elimination Schemes.
 
