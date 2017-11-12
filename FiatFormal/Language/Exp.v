@@ -589,12 +589,9 @@ Proof.
    rip; simpl;
    try (solve [f_equal; rewritess; burn]).
 
- Case "XVar". (* disgusting *)
- lift_cases. intros. intros. simpl. lift_cases. intros. lift_cases. intros. f_equal. omega.
- intros. f_equal. omega. intros. lift_cases. intros; omega. intros; omega. intros.
- simpl. lift_cases; intros; try omega. auto.
- (* repeat (simpl; lift_cases; burn); *)
- (*   solve [f_equal; omega]. *)
+ Case "XVar".
+ repeat (simpl; lift_cases; intros);
+   try solve [f_equal; omega].
 
  Case "XTup".
  f_equal.
@@ -622,8 +619,7 @@ Proof.
 
  Case "XMatch".
  f_equal. burn.
- rewrite map_map.
- rewrite map_map.
+ repeat (rewrite map_map).
  rewrite Forall_forall in *.
  rewrite (map_ext_in
             (fun a1 => liftXA n d (liftXA m d a1))
@@ -638,6 +634,13 @@ Proof.
             (fun x0 => liftXX m d (liftXX n d x0))); burn.
 Qed.
 
+
+Ltac burn_liftXX_succ :=
+  match goal with
+  | [ H : Forall _ _ |- map _ _ = map _ _ ] =>
+    repeat (rewrite map_map);
+    rewrite Forall_forall in *
+  end.
 
 (* When consecutively lifting an expression, we can lift by one
    more place in the first lifting and one less in the second. *)
@@ -660,40 +663,35 @@ Proof.
 
   Case "XTup".
   f_equal.
-  repeat (rewrite map_map).
-  rewrite Forall_forall in *.
+  burn_liftXX_succ.
   rewrite (map_ext_in
              (fun x0 => liftXX (S n) d (liftXX m d x0))
              (fun x0 => liftXX n d (liftXX (S m) d x0))); burn.
 
   Case "XNApp".
   f_equal. apply IHx; auto.
-  repeat (rewrite map_map).
-  rewrite Forall_forall in *.
+  burn_liftXX_succ.
   rewrite (map_ext_in
              (fun x0 => liftXX (S n) d (liftXX m d x0))
              (fun x0 => liftXX n d (liftXX (S m) d x0))); burn.
 
   Case "XCon".
   f_equal.
-  repeat (rewrite map_map).
-  rewrite Forall_forall in *.
+  burn_liftXX_succ.
   rewrite (map_ext_in
              (fun x0 => liftXX (S n) d (liftXX m d x0))
              (fun x0 => liftXX n d (liftXX (S m) d x0))); burn.
 
   Case "XMatch".
   f_equal. eauto.
-  repeat (rewrite map_map).
-  rewrite Forall_forall in *.
+  burn_liftXX_succ.
   rewrite (map_ext_in
              (fun x1 => liftXA (S n) d (liftXA m d x1))
              (fun x1 => liftXA n d (liftXA (S m) d x1))); burn.
 
   Case "XChoice".
   f_equal.
-  repeat (rewrite map_map).
-  rewrite Forall_forall in *.
+  burn_liftXX_succ.
   rewrite (map_ext_in
              (fun x0 => liftXX (S n) d (liftXX m d x0))
              (fun x0 => liftXX n d (liftXX (S m) d x0))); burn.

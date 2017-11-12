@@ -47,6 +47,43 @@ Ltac inverts_kind :=
   | [ H1 : KIND _ _ _ |- _ ] => inverts keep H1
   end.
 
+(* ----------------------------- *)
+ Ltac notHyp P :=
+   match goal with
+   | [ _ : P |- _ ] => fail 1
+   | _ =>
+     match P with
+     | ?P1 /\ ?P2 => first [ notHyp P1 | notHyp P2 | fail 2 ]
+     | _ => idtac P
+     end
+   end.
+ Ltac extend pf :=
+   let t := type of pf in
+   let t' := eval simpl in t in
+       notHyp t'; generalize pf; intro.
+  Ltac forall_cons :=
+   match goal with
+   | [ H: Forall _ (?tl :> ?h) |- _ ] =>
+     inverts H; eauto
+   end.
+ Ltac ff_goal :=
+   match goal with
+   | [ |- Forall _ _ ] => apply Forall_forall; intros; eauto
+   end.
+ Ltac forall_in_extract' :=
+   match goal with
+   | [ H1: Forall _ ?l,
+           H2: In ?x ?l |- _ ] =>
+     let H := fresh "H" in
+     pose proof (Forall_in _ _ _ H1 H2) as H; simpl in H; eauto
+   end.
+ Ltac forall_in_extract :=
+   match goal with
+   | [ H1: Forall _ ?l,
+       H2: In ?x ?l |- _ ] =>
+     extend (Forall_in _ _ _ H1 H2); simpl in *; eauto
+   end.
+(* ----------------------------- *)
 
 (********************************************************************)
 (* A well kinded type is well formed. *)
@@ -57,24 +94,27 @@ Lemma kind_wfT
 Proof.
  intros. gen ke k.
  induction t; intros; inverts H; simpl; eauto;
-   try inverts_kind; eauto; repeat constructor; eauto.
+   try inverts_kind; eauto; repeat constructor; eauto;
+ repeat (first [forall_cons | ff_goal | forall_in_extract]).
 
- Case "TNProd".
- inverts keep H4. eauto.
- apply Forall_forall; intros.
- pose proof (Forall_in _ _ _ H2 H); simpl in *.
- eapply H3. inverts keep H4.
- pose proof (Forall_in _ _ _ H8 H); simpl in *.
- eassumption.
+(* OLD PROOF *)
+ (* Case "TNProd". *)
+ (* inverts keep H4. eauto. *)
+ (* apply Forall_forall; intros. *)
+ (* pose proof (Forall_in _ _ _ H2 H); simpl in. *)
+ (* eapply H3. inverts keep H4. *)
+ (* pose proof (Forall_in _ _ _ H8 H); simpl in *. *)
+ (* eassumption. *)
 
- Case "TNFun".
- inverts keep H7; eauto.
- apply Forall_forall; intros.
- pose proof (Forall_in _ _ _ H2 H); simpl in *.
- eapply H3.
- inverts keep H7.
- pose proof (Forall_in _ _ _ H9 H); simpl in *.
- eassumption.
+ (* Case "TNFun". *)
+ (* inverts keep H7; eauto. *)
+ (* apply Forall_forall; intros. *)
+ (* pose proof (Forall_in _ _ _ H2 H); simpl in *. *)
+ (* eapply H3. *)
+ (* inverts keep H7. *)
+ (* pose proof (Forall_in _ _ _ H9 H); simpl in *. *)
+ (* eassumption. *)
+
 Qed.
 
 
@@ -103,8 +143,8 @@ Proof.
  Case "TVar".
  lift_cases; intros; auto.
 
- Case "TExists".
- apply KIExists.
+ Case "TExists". (* why doesn't auto 10 hang here? *)
+ apply KIExists. (* why doesn't auto try applying registered constructor? *)
  rewrite insert_rewind.
  apply IHt. auto.
 

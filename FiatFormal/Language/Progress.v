@@ -1,3 +1,4 @@
+
 Require Import FiatFormal.Language.Step.
 Require Import FiatFormal.Language.SubstExpExp.
 Require Import FiatFormal.Language.SubstTypeExp.
@@ -158,7 +159,7 @@ Proof.
  repeat nforall. rip.
  have (exists t, TYPE ds nil nil x t). dest t.
  have (value x \/ (exists x', STEP pb ds pbOK x x') \/ hasChoiceX x).
- inverts H4; rip. inverts H6. auto. (* inverts H3; auto. *)
+ inverts H4; rip. inverts H6. auto.
  (* All args are wnf, or there is a context where one can step *)
  lets D: (@exps_ctx_run exp exp) HWS.
  inverts D.
@@ -215,19 +216,14 @@ Proof.
  Case "XMatch".
  right. assert (exists t, TYPE ds nil nil x t) by eauto.
  destruct (IHx pb ds H0 pbOK); eauto.
- (* have HS: (value x \/ (exists x', STEP x x')). *)
- (* inverts HS. clear IHx. *)
  SCase "x value".
  destruct x; nope.
  SSCase "XCon".
  inverts_type.
  rewrite H8 in H11. inversion H11; subst.
- (* rrwrite (dcs0 = dcs). *)
  assert (exists ts x, getAlt d aa = Some (AAlt d ts x)).
  apply getAlt_exists.
  repeat nforall. spec H10 H15. auto.
- (* have HG: (exists ts x, getAlt d aa = Some (AAlt d ts x)) *)
- (*   by burn using getAlt_exists. *)
  dest ts. dest x.
  left. exists (substXXs 0 l x). eapply EsMatchAlt.
  inverts H1. inverts H3; auto. eauto.

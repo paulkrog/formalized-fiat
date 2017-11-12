@@ -61,8 +61,8 @@ Proof.
   Case "PLet".
   simpl. invert H; intros; subst.
   assert
-    (Hcomp : substTT (0 + ix) S (substTT 0 τr t2)
-             = (substTT 0 (substTT (0 + ix) S τr)
+    (Hcomp : substTT (0 + ix) S (substTT 0 tr t2)
+             = (substTT 0 (substTT (0 + ix) S tr)
                         (substTT (1 + 0 + ix) (liftTT 0 S) t2))).
   apply substTT_substTT with (n:=0) (m:=ix).
   simpl in Hcomp.
@@ -74,9 +74,9 @@ Proof.
   eassumption.
   assumption.
   assumption.
-  assert (Hcomp' : substTT (0 + ix) S (substTT 0 τr τ)
-                   = (substTT 0 (substTT (0 + ix) S τr)
-                              (substTT (1 + 0 + ix) (liftTT 0 S) τ))).
+  assert (Hcomp' : substTT (0 + ix) S (substTT 0 tr t)
+                   = (substTT 0 (substTT (0 + ix) S tr)
+                              (substTT (1 + 0 + ix) (liftTT 0 S) t))).
   apply substTT_substTT with (n:=0) (m:=ix).
   simpl in Hcomp'.
   rewrite <- Hcomp'.

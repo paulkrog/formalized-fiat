@@ -1,5 +1,3 @@
-(* PMK TODO: remove unicode \tau in typing of programs (this will *)
-(* break some proofs) *)
 
 Require Import FiatFormal.Language.SubstTypeType.
 Require Export FiatFormal.Language.KiJudge.
@@ -105,26 +103,22 @@ Hint Constructors TYPEA.
 
 (* ADT judgement assigns a type to an ADT. *)
 Inductive TYPEADT : defs -> kienv -> tyenv -> adt -> ty -> Prop :=
-| TYADT : forall ds ke te x τr τ,
-    KIND ke τr KStar
-    (* -> KIND (ke :> KStar) τ *)
-    (* KStar *) (* decided this wasn't necessary since in presence of following premise *)
-    (* ADT method bodies type according to signatures *)
-    -> TYPE ds ke te x (substTT 0 τr τ)
-    (* -> t = TNProd ts ... add this later, also think about how to *)
-    (* enforce type of each element in the product *)
-    -> TYPEADT ds ke te (IADT τr x (TExists τ)) (TExists τ).
+| TYADT : forall ds ke te x tr t,
+    KIND ke tr KStar
+    -> TYPE ds ke te x (substTT 0 tr t)
+    -> TYPEADT ds ke te (IADT tr x (TExists t)) (TExists t).
 Hint Constructors TYPEADT.
 
 (* Program judgement assigns a type to a program. *)
 Inductive TYPEPROG : defs -> kienv -> tyenv -> prog -> ty -> Prop :=
-| TYLet : forall ds ke te τr x τ p t2,
-    TYPEADT ds ke te (IADT τr x (TExists τ)) (TExists τ)
-    -> TYPEPROG ds (ke :> KStar) ((liftTE 0 te) :> τ) p t2
-    -> TYPEPROG ds ke te (PLET (IADT τr x (TExists τ)) p) (substTT 0 τr t2)
+| TYLet : forall ds ke te tr x t p t2,
+    TYPEADT ds ke te (IADT tr x (TExists t)) (TExists t)
+    -> TYPEPROG ds (ke :> KStar) ((liftTE 0 te) :> t) p t2
+    -> TYPEPROG ds ke te (PLET (IADT tr x (TExists t)) p) (substTT 0 tr t2)
 | TYExp : forall ds ke te x t,
     TYPE ds ke te x t
     -> TYPEPROG ds ke te (PEXP x) t.
+
 
 Ltac invert_adt_type :=
   repeat
@@ -194,7 +188,7 @@ Proof.
                    TYPEA ds ke te a tBuilds tRes
                    -> KIND ke tRes KStar); intros; try (first [inverts H | inverts H0]); eauto.
 
- Case "???".
+ Case "XApp".
  eapply IHx1 in H4. inverts H4. auto.
 
  Case "XTup".
@@ -243,12 +237,6 @@ Proof.
  inverts H0; auto.
 Qed.
 
-(* Ltac stomp_forall := *)
-(*   do 1 (first [ inverts_type | *)
-(*                 nforall | *)
-(*                 constructor | *)
-(*                 rewrite Forall_forall; intros | *)
-(*                 eauto ]). *)
 
 (* A well typed expression is well formed. *)
 Theorem type_wfX
@@ -310,7 +298,7 @@ Proof.
   inverts_kind. eapply kind_wfT; eauto.
   eapply IHx; eauto.
 
-  Case "XCon". (* similar to XTup case, target for automation *)
+  Case "XCon".
   inverts keep H0.
   constructor.
   repeat nforall. intros.
@@ -347,6 +335,7 @@ Proof.
   destruct l. nope.
   simpl in *; auto.
 Qed.
+
 
 (********************************************************************)
 (* Weakening the kind environment of a type judgement.
@@ -497,6 +486,7 @@ Proof.
   rewrite <- map_app.
   apply IHx1; auto.
 Qed.
+
 
 Lemma type_kienv_weaken
   : forall ds ke te x1 t1 k2,

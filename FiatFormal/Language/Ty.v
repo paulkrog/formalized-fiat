@@ -12,6 +12,7 @@ Fixpoint tycon_beq t1 t2 :=
   | TyConData n1, TyConData n2 => beq_nat n1 n2
   end.
 
+
 (* Proposition constructors *)
 Inductive propcon : Type :=
 | PropCon : nat -> propcon.
@@ -22,6 +23,7 @@ Fixpoint propcon_beq t1 t2 :=
   | PropCon n1, PropCon n2 => beq_nat n1 n2
   end.
 
+
 (* Data Constructors *)
 Inductive datacon : Type :=
  | DataCon    : nat -> datacon.
@@ -31,6 +33,7 @@ Fixpoint datacon_beq t1 t2 :=
   match t1, t2 with
   | DataCon n1, DataCon n2 => beq_nat n1 n2
   end.
+
 
 Unset Elimination Schemes.
 (* Type Expressions *)
@@ -70,12 +73,13 @@ Proof.
   Case "TExists".
   apply texists. apply IHT.
   Case "TNProd".
-  apply tnprod. induction l. apply Forall_nil. apply Forall_cons. apply IHT. apply IHl.
+  apply tnprod. induction l; repeat constructor; auto.
   Case "TNFun".
-  apply tnfun.  induction l. apply Forall_nil. apply Forall_cons. apply IHT. apply IHl.
+  apply tnfun.  induction l; repeat constructor; auto.
   apply IHT.
 Qed.
 Unset Elimination Schemes.
+
 
 (* Definitions.
    Carries meta information about type and data constructors
@@ -173,6 +177,7 @@ Proof.
   simpl in H. auto.
 Qed.
 
+
 (********************************************************************)
 (* This is used to restrict the possible types used to define algebraic *)
 (* data types as well as propositions. *)
@@ -220,6 +225,7 @@ Definition closedT (tt: ty) : Prop
  := wfT nil tt.
 Hint Unfold closedT.
 
+
 (********************************************************************)
 (* Lifting of type indices in types.
    When we push new elements on the environment stack, we need
@@ -254,14 +260,14 @@ Lemma simpleLiftEq :
     -> t = liftTT d t.
 Proof.
   intros.
-  induction t; try inverts H; intros; auto.
+  induction t; try inverts H; intros; simpl; auto.
   Case "TFun".
   spec IHt1 H2.
   spec IHt2 H3. simpl.
   rewrite <- IHt1.
   rewrite <- IHt2. auto.
-  Case "TNProd". (* may be cleaner, shorter way *)
-  simpl. f_equal.
+  Case "TNProd".
+  f_equal.
   pose proof (Forall_mp _ _ _ H0 H2).
   repeat nforall.
   apply Forall2_eq.
@@ -271,7 +277,7 @@ Proof.
   apply H; auto.
   induction ts; eauto.
   apply Forall2_cons; auto.
-  Case "TNFun". (* may be cleaner, shorter way *)
+  Case "TNFun".
   simpl. f_equal; auto.
   pose proof (Forall_mp _ _ _ H0 H4).
   repeat nforall.
@@ -297,12 +303,14 @@ Proof.
   rewrite <- H; auto.
 Qed.
 
+
 (* Tactic to help deal with lifting functions. *)
 Ltac lift_cases
  := match goal with
      |  [ |- context [le_gt_dec ?n ?n'] ]
      => case (le_gt_dec n n')
     end.
+
 
 (********************************************************************)
 (* Substitution for the outer-most binder in a type. *)
@@ -355,7 +363,7 @@ Proof.
   apply H; auto.
   induction ts; eauto.
   apply Forall2_cons; auto.
-  Case "TNFun". (* may be cleaner, shorter way *)
+  Case "TNFun".
   simpl. f_equal; auto.
   pose proof (Forall_mp _ _ _ H0 H4).
   repeat nforall.
@@ -379,6 +387,7 @@ Proof.
   assert (a = substTT d t2 a). apply simpleSubstEq; auto.
   rewrite <- H; auto.
 Qed.
+
 
 (********************************************************************)
 (* Changing the order of lifting. *)
@@ -434,34 +443,35 @@ Proof.
  induction t1; intros; eauto.
 
  Case "TVar".
-  simpl; lift_cases; unfold substTT;
+ simpl; lift_cases; unfold substTT;
    fbreak_nat_compare; intros;
-   burn.
+     burn.
 
  Case "TFun".
-  simpl.
-  rewrite IHt1_1.
-  rewrite IHt1_2. auto.
+ simpl.
+ rewrite IHt1_1.
+ rewrite IHt1_2. auto.
 
-  Case "TExists".
-  simpl.
-  rewrite IHt1. auto.
+ Case "TExists".
+ simpl.
+ rewrite IHt1. auto.
 
-  Case "TNProd".
-  simpl. apply f_equal.
-  repeat rewrite (map_map).
-  rewrite <- map_id.
-  apply map_ext_in; intros.
-  apply (Forall_in _ _ _ H H0).
+ Case "TNProd".
+ simpl. apply f_equal.
+ repeat rewrite (map_map).
+ rewrite <- map_id.
+ apply map_ext_in; intros.
+ apply (Forall_in _ _ _ H H0).
 
-  Case "TNFun".
-  simpl. apply f_equal2.
-  repeat rewrite (map_map).
-  rewrite <- map_id.
-  apply map_ext_in; intros.
-  apply (Forall_in _ _ _ H H0).
-  apply IHt1.
+ Case "TNFun".
+ simpl. apply f_equal2.
+ repeat rewrite (map_map).
+ rewrite <- map_id.
+ apply map_ext_in; intros.
+ apply (Forall_in _ _ _ H H0).
+ apply IHt1.
 Qed.
+
 
 (* Lifting after substitution *)
 Lemma liftTT_substTT
@@ -500,6 +510,7 @@ Proof.
   apply (Forall_in _ _ _ H H0).
   apply IHt1.
 Qed.
+
 
 (* Lifting after substitution, another way. *)
 Lemma liftTT_substTT'

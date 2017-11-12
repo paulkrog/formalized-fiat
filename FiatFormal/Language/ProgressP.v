@@ -6,6 +6,7 @@ Require Import FiatFormal.Language.SubstTypeType.
 Require Import FiatFormal.Language.TyJudge.
 Require Import FiatFormal.Language.Progress.
 
+
 (* A well typed program is either a value, can take a step, or has a choice. *)
 Theorem progressP
   : forall pb ds pbOK p,

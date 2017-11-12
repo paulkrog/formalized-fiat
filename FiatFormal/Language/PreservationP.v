@@ -8,6 +8,7 @@ Require Import FiatFormal.Language.TyJudge.
 Require Import FiatFormal.Language.SubstExistential.
 Require Import FiatFormal.Language.Preservation.
 
+
 (* When a closed program takes a step the result has the same type. *)
 Theorem preservationP
   : forall pb ds pbOK p p' t,

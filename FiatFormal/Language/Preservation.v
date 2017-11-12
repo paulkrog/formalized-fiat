@@ -5,6 +5,7 @@ Require Import FiatFormal.Language.SubstTypeExp.
 Require Import FiatFormal.Language.SubstTypeType.
 Require Import FiatFormal.Language.TyJudge.
 
+
 (* The body of an alternative is well typed under an environment
    that includes the arguments of the constructor being matched. *)
 Lemma getAlt_bodyIsWellTyped_fromAlts
@@ -77,7 +78,7 @@ Proof.
 
   Case "XTup".
   invert_exp_type.
-  f_equal. (* erewrite <- H2; eauto. *)
+  f_equal.
   assert (x = liftXX 1 n x).
   assert (In x (l0 :> x)) by auto.
   pose proof (Forall2_exists_left _ _ _ _ H H6).
@@ -211,23 +212,19 @@ Proof.
 
  SCase "XCon".
  eapply TYCon; eauto.
- eapply exps_ctx_Forall2_swap. eauto. (* why can't this be sequenced? *)
- apply IHHS. auto.
+ eapply exps_ctx_Forall2_swap; eauto.
 
  SCase "XChoice".
  eapply TYChoice; eauto.
- eapply exps_ctx_Forall2_swap. eauto.
- apply IHHS. auto.
+ eapply exps_ctx_Forall2_swap; eauto.
 
  SCase "Tup".
  eapply TYTup; eauto.
- eapply exps_ctx_Forall2_swap. eauto. (* why can't this be sequenced? *)
- apply IHHS. auto.
+ eapply exps_ctx_Forall2_swap; eauto.
 
  SCase "NApp".
  eapply TYNApp; eauto.
- eapply exps_ctx_Forall2_swap. eauto. (* why can't this be sequenced? *)
- apply IHHS. auto.
+ eapply exps_ctx_Forall2_swap; eauto.
 
  Case "EsFixApp".
  eapply subst_value_value; eauto.
@@ -244,7 +241,6 @@ Proof.
  Case "EsCaseAlt".
  eapply subst_exp_exp_list; eauto.
  eapply getAlt_bodyIsWellTyped_fromMatch; eauto.
- (* assert (tsArgs = tsArgs0). *)
  lets D: getAlt_ctorArgTypesMatchDataDef H4 H7 H0. auto.
  subst. auto.
 
