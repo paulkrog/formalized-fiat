@@ -1,6 +1,8 @@
 
 Require Import FiatFormal.Language.Step.
 
+Set Printing Projections.
+
 
 Definition refines (x1 x2 : exp) :=
   forall pb ds pbOK v,
@@ -17,18 +19,20 @@ Definition refinesP (p1 p2 : prog) :=
 
 (* need way to specify method arity  *)
 
-Definition getRep (a : adt) :=
+Definition getRepType (a : adt) :=
   match a with
-  | IADT r x s => r
+  | IADT r ms ss => r
   end.
-Definition getBody (a : adt) :=
+Definition getMethods (a : adt) :=
   match a with
-  | IADT r x s => x
+  | IADT r ms ss => ms
   end.
-Definition getSig (a : adt) :=
+Definition getSigs (a : adt) :=
   match a with
-  | IADT r x s => s
+  | IADT r ms ss => ss
   end.
+Definition getArity (m : method) :=
+  m.(arity).
 
 (* Definition getArity (ts : list ty) (x : exp) (m : (XNFun ts x)) := *)
 (*   length ts. *)
@@ -57,7 +61,7 @@ Definition getSig (a : adt) :=
 (* Definition refinesADT (aOld aNew : adt) := *)
 (*   getBody aOld = (XTup ms) *)
 (*   -> Forall2 (fun m => exists ts x, m = (XNFun ts x)) ms *)
-(*   exists (absRel : getRep aOld -> getRep aNew -> Prop), *)
+(*   exists (absRel : getRepType aOld -> getRepType aNew -> Prop), *)
 (*     -> length ms = n *)
 (*     -> *)
 
@@ -67,7 +71,7 @@ Definition getSig (a : adt) :=
 (*     -> length methodsOld = length methodsNew *)
 (*     -> get i methodsNew = methodNew *)
 (*     -> get i methodsOld = methodOld *)
-(*     -> forall (reps_o : list (getRep aOld)) (reps_n : list (getRep aNew)) *)
+(*     -> forall (reps_o : list (getRepType aOld)) (reps_n : list (getRepType aNew)) *)
 (*         (arity : nat) (domSize : nat) xs vPairNew vRes vPairOld rep_n', *)
 (*         arity = getArity methodNew *)
 (*         -> length reps_o = arity *)
@@ -85,14 +89,14 @@ Definition getSig (a : adt) :=
 
 (* Definition ADTrefines (aOld aNew : adt) := *)
 (*   wfADT aOld -> wfADT aNew -> *)
-(*   exists (absRel : getRep aOld -> getRep aNew -> Prop), *)
+(*   exists (absRel : getRepType aOld -> getRepType aNew -> Prop), *)
 (*   forall methodsOld methodsNew methodOld methodNew i numMethods, *)
 (*     getMethods aOld = methodsOld *)
 (*     -> getMethods aNew = methodsNew *)
 (*     -> length methodsOld = length methodsNew *)
 (*     -> get i methodsNew = methodNew *)
 (*     -> get i methodsOld = methodOld *)
-(*     -> forall (reps_o : list (getRep aOld)) (reps_n : list (getRep aNew)) *)
+(*     -> forall (reps_o : list (getRepType aOld)) (reps_n : list (getRepType aNew)) *)
 (*         (arity : nat) (domSize : nat) xs vPairNew vRes vPairOld rep_n', *)
 (*         arity = getArity methodNew *)
 (*         -> length reps_o = arity *)
@@ -110,14 +114,14 @@ Definition getSig (a : adt) :=
 
 
 (* Definition ADTrefines' (aOld aNew : adt) := *)
-(*   exists (absRel : getRep aOld -> getRep aNew -> Prop), *)
+(*   exists (absRel : getRepType aOld -> getRepType aNew -> Prop), *)
 (*   forall opsOld opsNew opOld opNew i numMethods, *)
 (*     getOps aOld = opsOld *)
 (*     -> getOps aNew = opsNew *)
 (*     -> length opsOld = length opsNew *)
 (*     -> get i opsNew = opNew *)
 (*     -> get i opsOld = opOld *)
-(*     -> forall (reps_o : list (getRep aOld)) (reps_n : list (getRep aNew)) *)
+(*     -> forall (reps_o : list (getRepType aOld)) (reps_n : list (getRepType aNew)) *)
 (*         (arity : nat) (domSize : nat) xs vPairNew vRes vPairOld rep_n', *)
 (*         arity = getArity opNew *)
 (*         -> length reps_o = arity *)

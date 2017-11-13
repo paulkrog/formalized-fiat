@@ -101,12 +101,16 @@ Hint Constructors TYPEA.
 
 (* -------------------------------------------------- *)
 
+Inductive TYPEMETHOD : defs -> kienv -> tyenv -> method -> ty -> Prop :=
+| TYMETHOD : forall
+    TYPEMETHOD ds ke te (mkMethod arity domSize body)
+
 (* ADT judgement assigns a type to an ADT. *)
-Inductive TYPEADT : defs -> kienv -> tyenv -> adt -> ty -> Prop :=
-| TYADT : forall ds ke te x tr t,
+Inductive TYPEADT : defs -> kienv -> tyenv -> adt -> list ty -> Prop :=
+| TYADT : forall ds ke te ms tr ts,
     KIND ke tr KStar
-    -> TYPE ds ke te x (substTT 0 tr t)
-    -> TYPEADT ds ke te (IADT tr x (TExists t)) (TExists t).
+    -> Forall2 (TYPE ds ke te) ms (map (substTT 0 tr) ts)
+    -> TYPEADT ds ke te (IADT tr ms (map (TExists) ts)) (map (TExists) ts).
 Hint Constructors TYPEADT.
 
 (* Program judgement assigns a type to a program. *)

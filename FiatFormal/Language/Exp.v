@@ -218,6 +218,13 @@ Hint Constructors hasChoiceX.
 Hint Constructors hasChoiceA.
 
 
+Record method : Type :=
+  mkMethod {
+      arity : nat;
+      domSize : nat;
+      body : exp
+    }.
+
 (* Inductive method : Type := *)
 (* | METHOD : forall arity domSize ts x, *)
 (*     length ts = arity + domSize *)
@@ -228,8 +235,9 @@ Hint Constructors hasChoiceA.
 (* | IADT : forall arity domSize x, ty -> list (method arity domSize x) -> ty -> adt. *)
 (* Hint Constructors adt. *)
 (* ADTs *)
+
 Inductive adt : Type :=
-| IADT : ty -> exp -> ty -> adt.
+| IADT : ty -> list method -> list ty -> adt.
 Hint Constructors adt.
 
 (* Programs *)
@@ -727,9 +735,19 @@ Qed.
 
 
 (* -------------------------Existential----------------------------------- *)
+Definition substTM (d : nat) (u : ty) (m : method) : method :=
+  match m with
+  | mkMethod arity domSize body => mkMethod arity domSize (substTX d u body)
+  end.
+
+Definition substXM (d : nat) (u : exp) (m : method) : method :=
+  match m with
+  | mkMethod arity domSize body => mkMethod arity domSize (substXX d u body)
+  end.
+
 Definition substTADT (d : nat) (u : ty) (ad : adt) : adt :=
   match ad with
-  | IADT r x s => IADT (substTT d u r) (substTX d u x) (substTT d u s)
+  | IADT r ms ss => IADT (substTT d u r) (map (substTM d u) ms) (map (substTT d u) ss)
   end.
 
 Fixpoint substTP (d : nat) (u : ty) (p : prog) : prog :=
@@ -741,14 +759,27 @@ Fixpoint substTP (d : nat) (u : ty) (p : prog) : prog :=
 (* Substitution of expressions in ADTs. *)
 Definition substXADT (d : nat) (u : exp) (ad : adt) : adt :=
   match ad with
-  | IADT r x s => IADT r (substXX d u x) s
+  | IADT r ms ss => IADT r (map (substXM d u) ms) ss
   end.
 
 (* Substitution of expressions in programs. *)
 Fixpoint substXP (d : nat) (u : exp) (p : prog) : prog :=
   match p with
-  | PLET ad p' => PLET (substXADT d u ad) (substXP (S d) (liftXX 1 0 (liftTX 0 u)) p')
-  | PEXP x     => PEXP (substXX d u x)
+  | PLET ((IADT r ms ss) as ad) p'
+    => PLET (substXADT d u ad)
+           (substXP (length ms + d)
+                    (liftXX (length ms) 0 (liftTX 0 u))
+                    p')
+  | PEXP x
+    => PEXP (substXX d u x)
+  end.
+
+Fixpoint substXXsP (d : nat) (us : list exp) (p : prog) :=
+  match us with
+  | nil => p
+  | u :: us' => substXXsP d us'
+                         (substXP d (liftXX (List.length us') 0 u)
+                                  p)
   end.
 
 (* Weak normal forms cannot be reduced further by
@@ -760,15 +791,20 @@ Inductive wnfP : prog -> Prop :=
      -> wnfP (PEXP x).
 Hint Constructors wnfP.
 
+Definition wfMethod (ke : kienv) (te : tyenv) (m : method) : Prop :=
+  match m with
+  | mkMethod arity domSize (XNFun ts x) =>
+    Forall (wfT ke) ts
+    /\ wfX ke te x
+    /\ length ts = arity + domSize
+  | _ => False
+  end.
+
 Definition wfADT (ke : kienv) (te : tyenv) (ad : adt) : Prop :=
   match ad with
-    (* perhaps here I can enforce appropriate nary function types in
-       sig along with function form of method bodies similar to wfP below *)
-  | IADT r x s => wfT ke r
-                 /\ wfX ke te x
-                 /\ wfT ke s
-                 /\ (exists xs, x = XTup xs
-                          /\ (Forall (fun x => exists ts x', x = (XNFun ts x')) xs))
+  | IADT r ms ss => wfT ke r
+                   /\ Forall (wfMethod ke te) ms
+                   /\ Forall (wfT ke) ss
   end.
 Hint Unfold wfADT.
 
@@ -777,8 +813,15 @@ Fixpoint wfP (ke: kienv) (te: tyenv) (p: prog) : Prop :=
   match p with
   | PLET ad p' =>
     match ad with
-    | IADT r x s =>
-      match s with
+    | IADT r ms ss =>
+      match ss with
+      |  =>
+    wfADT ke te ad
+    /\ wfP (ke :> KStar)
+          ((liftTE 0 te) :> )
+    match ad with
+    | IADT r ms ss =>
+      match ss with
       | TExists t => wfADT ke te ad
                     /\ wfP (ke :> KStar)
                           ((liftTE 0 te) :> t)
