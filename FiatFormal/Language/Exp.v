@@ -1,4 +1,3 @@
-(* PMK TODO: improve proof with disgusting label *)
 
 Require Export FiatFormal.Language.TyEnv.
 Require Export FiatFormal.Language.Ty.
@@ -219,6 +218,15 @@ Hint Constructors hasChoiceX.
 Hint Constructors hasChoiceA.
 
 
+(* Inductive method : Type := *)
+(* | METHOD : forall arity domSize ts x, *)
+(*     length ts = arity + domSize *)
+(*     -> method arity domSize (XNFun ts x). *)
+
+(* (* ADTs *) *)
+(* Inductive adt : Type := *)
+(* | IADT : forall arity domSize x, ty -> list (method arity domSize x) -> ty -> adt. *)
+(* Hint Constructors adt. *)
 (* ADTs *)
 Inductive adt : Type :=
 | IADT : ty -> exp -> ty -> adt.
@@ -756,21 +764,30 @@ Definition wfADT (ke : kienv) (te : tyenv) (ad : adt) : Prop :=
   match ad with
     (* perhaps here I can enforce appropriate nary function types in
        sig along with function form of method bodies similar to wfP below *)
-  | IADT r x s => wfT ke r /\ wfX ke te x /\ wfT ke s
+  | IADT r x s => wfT ke r
+                 /\ wfX ke te x
+                 /\ wfT ke s
+                 /\ (exists xs, x = XTup xs
+                          /\ (Forall (fun x => exists ts x', x = (XNFun ts x')) xs))
   end.
 Hint Unfold wfADT.
 
 (* A well formed program is closed under the given environments *)
 Fixpoint wfP (ke: kienv) (te: tyenv) (p: prog) : Prop :=
   match p with
-  | PLET ad p' => match ad with
-                 | IADT r x s => match s with
-                                | TExists t => wfADT ke te ad /\ wfP (ke :> KStar) ((liftTE 0 te) :> t) p'
-                                | _ => False
-                                end
-                 end
-  | PEXP x     => wfX ke te x
- end.
+  | PLET ad p' =>
+    match ad with
+    | IADT r x s =>
+      match s with
+      | TExists t => wfADT ke te ad
+                    /\ wfP (ke :> KStar)
+                          ((liftTE 0 te) :> t)
+                          p'
+      | _ => False
+      end
+    end
+  | PEXP x => wfX ke te x
+  end.
 Hint Unfold wfP.
 
 (* Closed programs are well formed under empty environments *)

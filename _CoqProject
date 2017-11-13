@@ -6,15 +6,20 @@ FiatFormal/Language/Exp.v
 FiatFormal/Language/KiJudge.v
 FiatFormal/Language/Ki.v
 FiatFormal/Language/Preservation.v
+FiatFormal/Language/PreservationP.v
 FiatFormal/Language/Progress.v
+FiatFormal/Language/ProgressP.v
+FiatFormal/Language/SubstExistential.v
+FiatFormal/Language/Refinement.v
 FiatFormal/Language/Step.v
+FiatFormal/Language/StepContext.v
 FiatFormal/Language/SubstExpExp.v
 FiatFormal/Language/SubstTypeExp.v
 FiatFormal/Language/SubstTypeType.v
 FiatFormal/Language/TyEnv.v
 FiatFormal/Language/TyJudge.v
 FiatFormal/Language/Ty.v
-FiatFormal/Language/Context.v
+
 
 FiatFormal/Data/Bool.v
 FiatFormal/Data/Chain.v

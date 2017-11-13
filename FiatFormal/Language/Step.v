@@ -4,63 +4,7 @@ Require Import FiatFormal.Language.SubstExpExp.
 Require Export FiatFormal.Language.Exp.
 Require Import FiatFormal.Language.TyJudge.
 
-Require Export FiatFormal.Language.Context.
-
-(* TODO: consider implications of below definition...
-         esp. that nary function application requires
-         value of function but only wnfX of args *)
-
-(*  Evaluation contexts for expressions.
-    This describes a place in the exp AST where the sub-expression
-    there is able to take an evaluation step *)
-Inductive exp_ctx : (exp -> exp) -> Prop :=
-
- (* Left of an application *)
- | XcApp1
-   : forall x2,
-     exp_ctx (fun xx => XApp xx x2)
-
- (* The right of an application can step only when the left is
-    already a value. *)
- | XcApp2
-   : forall v1,
-     value v1
-     -> exp_ctx (fun xx => XApp v1 xx)
-
- | XcCon
-   : forall dc C,
-     exps_ctx wnfX C
-     -> exp_ctx (fun xx => XCon dc (C xx))
-
- (* We need to reduce the discriminant of a match to a value. *)
- | XcMatch
-   : forall alts,
-     exp_ctx (fun xx => XMatch xx alts)
-
- | XcChoice
-   : forall t pc C,
-     exps_ctx wnfX C
-     -> exp_ctx (fun xx => XChoice t pc (C xx))
-
- | XcTup
-   : forall C,
-     exps_ctx wnfX C
-     -> exp_ctx (fun xx => XTup (C xx))
-
- | XcProj
-   : forall n,
-     exp_ctx (fun xx => XProj n xx)
-
- | XcNApp1
-   : forall xs,
-     exp_ctx (fun xx => XNApp xx xs)
-
- | XcNApp2
-   : forall v1 C,
-     value v1
-     -> exps_ctx wnfX C
-     -> exp_ctx (fun xx => XNApp v1 (C xx)).
-Hint Constructors exp_ctx.
+Require Export FiatFormal.Language.StepContext.
 
 
 Inductive STEP
@@ -161,3 +105,222 @@ Inductive STEPP
         ProofBuilder ds ProofBuilderOK
         (PEXP x) (PEXP x').
 Hint Constructors STEPP.
+
+
+(* -------------------------MULTI-STEP built upon SimpleData--------------------------------- *)
+
+(* Multi-step evaluation
+   A sequence of small step transitions.
+   As opposed to STEPSL, this version has an append constructor
+   ESAppend that makes it easy to join two evaluations together.
+   We use this when converting big-step evaluations to small-step. *)
+Inductive STEPS
+  (ProofBuilder : propcon -> list exp -> Prop)
+    (ds : defs)
+    (ProofBuilderOK : forall ke te pc xs ts,
+        ProofBuilder pc xs
+        -> getPropDef pc ds = Some (DefProp pc ts)
+        -> Forall2 (TYPE ds ke te) xs ts)
+    : exp -> exp -> Prop :=
+
+ (* After no steps, we get the same exp.
+    We need this constructor to match the EVDone constructor
+    in the big-step evaluation, so we can convert between big-step
+    and multi-step evaluations. *)
+ | EsNone
+   : forall x1,
+     STEPS ProofBuilder ds ProofBuilderOK x1 x1
+
+ (* Take a single step. *)
+ | EsStep
+   : forall x1 x2,
+     STEP ProofBuilder ds ProofBuilderOK x1 x2
+     -> STEPS ProofBuilder ds ProofBuilderOK x1 x2
+
+ (* Combine two evaluations into a third. *)
+ | EsAppend
+   : forall x1 x2 x3,
+     STEPS ProofBuilder ds ProofBuilderOK x1 x2
+     -> STEPS ProofBuilder ds ProofBuilderOK x2 x3
+     -> STEPS ProofBuilder ds ProofBuilderOK x1 x3.
+Hint Constructors STEPS.
+
+Inductive STEPSP
+  (ProofBuilder : propcon -> list exp -> Prop)
+    (ds : defs)
+    (ProofBuilderOK : forall ke te pc xs ts,
+        ProofBuilder pc xs
+        -> getPropDef pc ds = Some (DefProp pc ts)
+        -> Forall2 (TYPE ds ke te) xs ts)
+    : prog -> prog -> Prop :=
+
+ | EsNoneP
+   : forall p,
+     STEPSP ProofBuilder ds ProofBuilderOK p p
+ | EsStepP
+   : forall p1 p2,
+     STEPP ProofBuilder ds ProofBuilderOK p1 p2
+     -> STEPSP ProofBuilder ds ProofBuilderOK p1 p2
+ | EsAppendP
+   : forall p1 p2 p3,
+     STEPSP ProofBuilder ds ProofBuilderOK p1 p2
+     -> STEPSP ProofBuilder ds ProofBuilderOK p2 p3
+     -> STEPSP ProofBuilder ds ProofBuilderOK p1 p3.
+Hint Constructors STEPSP.
+
+
+Ltac nopes := nope; nope.
+
+(* Stepping a wnf doesn't change it. *)
+Lemma step_wnfX
+  : forall pb ds pbOK x v,
+    wnfX x -> STEP pb ds pbOK x v -> v = x.
+Proof.
+ intros pb ds pbOK x v HW HS.
+ induction HS; nope.
+  destruct H; nopes.
+
+  + Case "XCon dc (C x)".
+    inverts HW.
+    assert (wnfX x).
+    eapply exps_ctx_Forall; eauto.
+    rrwrite (x' = x). auto.
+  + Case "XTup".
+    inverts HW.
+    assert (wnfX x).
+    eapply exps_ctx_Forall; eauto.
+    rrwrite (x' = x). auto.
+Qed.
+
+
+(* Multi-step evaluating a wnf doesn't change it. *)
+Lemma steps_wnfX
+  : forall pb ds pbOK x v,
+    wnfX x -> STEPS pb ds pbOK x v -> v = x.
+Proof.
+ intros pb ds pbOK x v HW HS.
+ induction HS; nopes.
+  Case "EsStep".
+   eapply step_wnfX; eauto.
+
+  Case "EsAppend".
+   have (x2 = x1). subst. auto.
+Qed.
+
+
+(* Multi-step evaluation in a context. *)
+Lemma steps_context
+  : forall pb ds pbOK C x1 x1',
+    exp_ctx C
+    -> STEPS pb ds pbOK x1 x1'
+    -> STEPS pb ds pbOK (C x1) (C x1').
+Proof.
+ intros pb ds pbOK C x1 x1' HC HS.
+ induction HS; eauto.
+Qed.
+
+
+(* Multi-step evaluation of a data constructor argument. *)
+Lemma steps_context_XCon
+  : forall pb ds pbOK C x v dc,
+    exps_ctx wnfX C
+    -> STEPS pb ds pbOK x v
+ -> STEPS pb ds pbOK (XCon dc (C x)) (XCon dc (C v)).
+Proof.
+ intros pb ds pbOK C x v dc HC HS.
+ induction HS; auto.
+
+ Case "XCon".
+  lets D: EsContext XcCon; eauto.
+  eauto.
+Qed.
+
+
+Lemma steps_in_XCon
+  : forall pb ds pbOK xs vs dc,
+    Forall2 (STEPS pb ds pbOK) xs vs
+    -> Forall wnfX vs
+    -> STEPS pb ds pbOK (XCon dc xs) (XCon dc vs).
+Proof.
+ intros pb ds pbOK xs vs dc HS HW.
+ lets HC: make_chain HS HW.
+  eapply steps_wnfX.
+
+ clear HS. clear HW.
+ induction HC; auto.
+  eapply (EsAppend pb ds pbOK (XCon dc (C x)) (XCon dc (C v))); eauto.
+  eapply steps_context_XCon; eauto.
+Qed.
+
+
+(********************************************************************)
+(* Left linearised multi-step evaluation
+   As opposed to STEPS, this version provides a single step at a time
+   and does not have an append constructor. This is convenient
+   when converting a small-step evaluations to big-step, via the
+   eval_expansion lemma. *)
+Inductive STEPSL
+          (ProofBuilder : propcon -> list exp -> Prop)
+          (ds : defs)
+          (ProofBuilderOK : forall ke te pc xs ts,
+              ProofBuilder pc xs
+              -> getPropDef pc ds = Some (DefProp pc ts)
+              -> Forall2 (TYPE ds ke te) xs ts)
+  : exp -> exp -> Prop :=
+
+ | EslNone
+   : forall x1, STEPSL ProofBuilder ds ProofBuilderOK x1 x1
+
+ | EslCons
+   : forall x1 x2 x3,
+     STEP ProofBuilder ds ProofBuilderOK x1 x2
+     -> STEPSL ProofBuilder ds ProofBuilderOK x2 x3
+     -> STEPSL ProofBuilder ds ProofBuilderOK x1 x3.
+Hint Constructors STEPSL.
+
+Inductive STEPSLP
+          (ProofBuilder : propcon -> list exp -> Prop)
+          (ds : defs)
+          (ProofBuilderOK : forall ke te pc xs ts,
+              ProofBuilder pc xs
+              -> getPropDef pc ds = Some (DefProp pc ts)
+              -> Forall2 (TYPE ds ke te) xs ts)
+  : prog -> prog -> Prop :=
+
+ | EslNoneP
+   : forall p,
+     STEPSLP ProofBuilder ds ProofBuilderOK p p
+ | EslConsP
+   : forall p1 p2 p3,
+     STEPP ProofBuilder ds ProofBuilderOK p1 p2
+     -> STEPSLP ProofBuilder ds ProofBuilderOK p2 p3
+     -> STEPSLP ProofBuilder ds ProofBuilderOK p1 p3.
+Hint Constructors STEPSLP.
+
+
+(* Transitivity of left linearised multi-step evaluation.
+   We use this when "flattening" a big step evaluation to the
+   small step one. *)
+Lemma stepsl_trans
+  : forall pb ds pbOK x1 x2 x3,
+    STEPSL pb ds pbOK x1 x2
+    -> STEPSL pb ds pbOK x2 x3
+    -> STEPSL pb ds pbOK x1 x3.
+Proof.
+ intros pb ds pbOK x1 x2 x3 H1 H2.
+ induction H1; eauto.
+Qed.
+
+
+(* Linearise a regular multi-step evaluation.
+   This flattens out all the append constructors, leaving us with
+   a list of individual transitions. *)
+Lemma stepsl_of_steps
+  : forall pb ds pbOK x1 x2,
+    STEPS pb ds pbOK x1 x2
+    -> STEPSL pb ds pbOK x1 x2.
+Proof.
+ intros pb ds pbOK x1 x2 HS.
+ induction HS;
+  eauto using stepsl_trans.
+Qed.
