@@ -82,6 +82,7 @@ Proof.
  eapply (EsContext pb ds pbOK (fun xx => XTup (C xx))); auto.
 Qed.
 
+
 (* Small step program evaluation *)
 Inductive STEPP
           (ProofBuilder : propcon -> list exp -> Prop)
@@ -91,12 +92,16 @@ Inductive STEPP
               -> getPropDef pc ds = Some (DefProp pc ts)
               -> Forall2 (TYPE ds ke te) xs ts)
   : prog -> prog -> Prop :=
-| SP_Prog : forall r x s p,
-    (* STEPP (PLET (IADT r x s) p) (substTP 0 r (substXP 0 x p)) *)
+| SP_Prog : (* forall r x s p, *)
+    (* STEPP *)
+    (*   ProofBuilder ds ProofBuilderOK *)
+    (*   (PLET (IADT r x s) p) *)
+    (*   (substXP 0 x (substTP 0 r p)) *)
+    forall r ms ss p,
     STEPP
       ProofBuilder ds ProofBuilderOK
-      (PLET (IADT r x s) p)
-      (substXP 0 x (substTP 0 r p))
+      (PLET (IADT r ms ss) p)
+      (substXXsP 0 (map (body) ms) (substTP 0 r p))
 | SP_Exp : forall x x',
     STEP
       ProofBuilder ds ProofBuilderOK

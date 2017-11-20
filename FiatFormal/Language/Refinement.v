@@ -1,5 +1,13 @@
+(* Todo: *)
+
+(*   -list method -> list ty ==> list (method * ty)
+     -make defs a parameter to all typing relations
+     -write refinesADT'
+*)
+
 
 Require Import FiatFormal.Language.Step.
+Require Import FiatFormal.Language.TyJudge.
 
 Set Printing Projections.
 
@@ -12,12 +20,6 @@ Definition refinesP (p1 p2 : prog) :=
   forall pb ds pbOK v,
     STEPSP pb ds pbOK p2 v
     -> STEPSP pb ds pbOK p1 v.
-
-(* need to access all operations of these adts. *)
-(* may need make use of wfP and wfADT to enforce n-ary. *)
-(* functions.  *)
-
-(* need way to specify method arity  *)
 
 Definition getRepType (a : adt) :=
   match a with
@@ -33,6 +35,76 @@ Definition getSigs (a : adt) :=
   end.
 Definition getArity (m : method) :=
   m.(arity).
+Definition getDom (m : method) :=
+  m.(dom).
+Definition getCod (m : method) :=
+  m.(cod).
+Definition getBody (m : method) :=
+  m.(body).
+
+(* Definition wfRefinement (aOld aNew : adt) :=. *)
+
+(* Inductive refinesADT'  *)
+(*            (ProofBuilder : propcon -> list exp -> Prop) *)
+(*            (ds : defs) *)
+(*            (ProofBuilderOK : forall ke te pc xs ts, *)
+(*                ProofBuilder pc xs *)
+(*                -> getPropDef pc ds = Some (DefProp pc ts) *)
+(*                -> Forall2 (TYPE ds ke te) xs ts) *)
+(*   : adt -> adt -> Prop := *)
+(* |  => *)
+(*    refinesADT' _ _ _ IADT _____ IADT ______ *)
+
+Definition refinesADT
+           (ProofBuilder : propcon -> list exp -> Prop)
+           (ds : defs)
+           (ProofBuilderOK : forall ke te pc xs ts,
+               ProofBuilder pc xs
+               -> getPropDef pc ds = Some (DefProp pc ts)
+               -> Forall2 (TYPE ds ke te) xs ts)
+           (aOld aNew : adt) :=
+
+
+  forall repTypeOld repTypeNew,
+    getRepType aOld = repTypeOld
+    -> getRepType aNew = repTypeNew
+    -> exists (absRel : exp -> exp -> Prop), (* This is not correct? *)
+      forall n mOld mNew
+        methodsNew methodsOld
+        mDomNew mDomOld
+        arityNew arityOld
+        repsNew repsOld
+        bodyNew bodyOld
+        vs,
+
+        getMethods aNew = methodsNew
+        -> getMethods aOld = methodsOld
+        -> length methodsNew = length methodsOld
+        -> get n methodsNew = Some mNew
+        -> get n methodsOld = Some mOld
+        -> getDom mNew = mDomNew
+        -> getDom mOld = mDomOld
+        -> mDomNew = mDomOld
+        -> getArity mOld = arityOld
+        -> getArity mNew = arityNew
+        -> arityNew = arityOld
+        -> getBody mNew = bodyNew
+        -> getBody mOld = bodyOld
+
+        -> length vs = length mDomNew
+        -> Forall wnfX vs
+        -> length repsNew = arityNew
+        -> Forall2 (absRel) repsOld repsNew
+
+        -> forall v repNew',
+            STEPS ProofBuilder ds ProofBuilderOK
+                  (XNApp (bodyNew) (repsNew >< vs))
+                  (XTup ((nil :> v) :> repNew'))
+            -> exists repOld',
+              STEPS ProofBuilder ds ProofBuilderOK
+                    (XNApp (bodyOld) (repsOld >< vs))
+                    (XTup ((nil :> v) :> repOld'))
+              /\ absRel repOld' repNew'.
 
 (* Definition getArity (ts : list ty) (x : exp) (m : (XNFun ts x)) := *)
 (*   length ts. *)

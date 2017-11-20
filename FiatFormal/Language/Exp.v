@@ -221,20 +221,10 @@ Hint Constructors hasChoiceA.
 Record method : Type :=
   mkMethod {
       arity : nat;
-      domSize : nat;
-      body : exp
+      dom : list ty;
+      body : exp;
+      cod : ty
     }.
-
-(* Inductive method : Type := *)
-(* | METHOD : forall arity domSize ts x, *)
-(*     length ts = arity + domSize *)
-(*     -> method arity domSize (XNFun ts x). *)
-
-(* (* ADTs *) *)
-(* Inductive adt : Type := *)
-(* | IADT : forall arity domSize x, ty -> list (method arity domSize x) -> ty -> adt. *)
-(* Hint Constructors adt. *)
-(* ADTs *)
 
 Inductive adt : Type :=
 | IADT : ty -> list method -> list ty -> adt.
@@ -737,12 +727,17 @@ Qed.
 (* -------------------------Existential----------------------------------- *)
 Definition substTM (d : nat) (u : ty) (m : method) : method :=
   match m with
-  | mkMethod arity domSize body => mkMethod arity domSize (substTX d u body)
+  | mkMethod arity dom body cod =>
+    mkMethod arity
+             (map (substTT d u) dom)
+             (substTX d u body)
+             (substTT d u cod)
   end.
 
 Definition substXM (d : nat) (u : exp) (m : method) : method :=
   match m with
-  | mkMethod arity domSize body => mkMethod arity domSize (substXX d u body)
+  | mkMethod arity dom body cod =>
+    mkMethod arity dom (substXX d u body) cod
   end.
 
 Definition substTADT (d : nat) (u : ty) (ad : adt) : adt :=
@@ -767,7 +762,7 @@ Fixpoint substXP (d : nat) (u : exp) (p : prog) : prog :=
   match p with
   | PLET ((IADT r ms ss) as ad) p'
     => PLET (substXADT d u ad)
-           (substXP (length ms + d)
+           (substXP (d + length ms)
                     (liftXX (length ms) 0 (liftTX 0 u))
                     p')
   | PEXP x
@@ -793,10 +788,10 @@ Hint Constructors wnfP.
 
 Definition wfMethod (ke : kienv) (te : tyenv) (m : method) : Prop :=
   match m with
-  | mkMethod arity domSize (XNFun ts x) =>
-    Forall (wfT ke) ts
-    /\ wfX ke te x
-    /\ length ts = arity + domSize
+  | mkMethod arity dom (XNFun ts x as body) cod =>
+    wfX ke te body
+    /\ length ts = arity + (length dom)
+    /\ wfT ke cod
   | _ => False
   end.
 
@@ -808,26 +803,19 @@ Definition wfADT (ke : kienv) (te : tyenv) (ad : adt) : Prop :=
   end.
 Hint Unfold wfADT.
 
-(* A well formed program is closed under the given environments *)
+Fixpoint hackyBuildStrippedTypes (ts : list ty) :=
+  match ts with
+  | (TExists t) :: ts' => t :: (hackyBuildStrippedTypes ts')
+  | _ :: ts' => hackyBuildStrippedTypes ts'
+  | nil => nil
+  end.
+
 Fixpoint wfP (ke: kienv) (te: tyenv) (p: prog) : Prop :=
   match p with
   | PLET ad p' =>
     match ad with
     | IADT r ms ss =>
-      match ss with
-      |  =>
-    wfADT ke te ad
-    /\ wfP (ke :> KStar)
-          ((liftTE 0 te) :> )
-    match ad with
-    | IADT r ms ss =>
-      match ss with
-      | TExists t => wfADT ke te ad
-                    /\ wfP (ke :> KStar)
-                          ((liftTE 0 te) :> t)
-                          p'
-      | _ => False
-      end
+      wfADT ke te ad /\ wfP (ke :> KStar) (te >< (hackyBuildStrippedTypes ss)) p'
     end
   | PEXP x => wfX ke te x
   end.

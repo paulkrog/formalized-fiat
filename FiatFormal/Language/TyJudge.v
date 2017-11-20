@@ -1,3 +1,4 @@
+(* Todo: make defs a parameter of TYPEADT and TYPEPROG relations *)
 
 Require Import FiatFormal.Language.SubstTypeType.
 Require Export FiatFormal.Language.KiJudge.
@@ -100,25 +101,43 @@ Hint Constructors TYPEA.
 
 
 (* -------------------------------------------------- *)
+Fixpoint dup {A : Type} (a : A) (c : nat) : list A :=
+  match c with
+  | O => nil
+  | S c' => a :: (dup a c')
+  end.
 
-Inductive TYPEMETHOD : defs -> kienv -> tyenv -> method -> ty -> Prop :=
-| TYMETHOD : forall
-    TYPEMETHOD ds ke te (mkMethod arity domSize body)
+Lemma dup_map {A : Type} : forall (f : A -> A) (a : A) (c : nat),
+    map f (dup a c) = dup (f a) c.
+Proof.
+  induction c; burn.
+Qed.
+
+Inductive TYPEMETHOD (rep : ty) : defs -> kienv -> tyenv -> method -> ty -> Prop :=
+| TYMETHOD : forall ds ke te arity dom body cod tRes,
+    cod = (TNProd ((nil :> rep) :> tRes))
+    -> TYPE ds ke te body (TNFun ((dup rep arity) >< dom) cod)
+    -> TYPEMETHOD rep ds ke te (mkMethod arity dom body cod) (TNFun ((dup rep arity) >< dom) cod).
+Hint Constructors TYPEMETHOD.
 
 (* ADT judgement assigns a type to an ADT. *)
 Inductive TYPEADT : defs -> kienv -> tyenv -> adt -> list ty -> Prop :=
 | TYADT : forall ds ke te ms tr ts,
     KIND ke tr KStar
-    -> Forall2 (TYPE ds ke te) ms (map (substTT 0 tr) ts)
+    -> Forall2 (TYPEMETHOD tr ds ke te) ms (map (substTT 0 tr) ts)
     -> TYPEADT ds ke te (IADT tr ms (map (TExists) ts)) (map (TExists) ts).
 Hint Constructors TYPEADT.
 
 (* Program judgement assigns a type to a program. *)
 Inductive TYPEPROG : defs -> kienv -> tyenv -> prog -> ty -> Prop :=
-| TYLet : forall ds ke te tr x t p t2,
-    TYPEADT ds ke te (IADT tr x (TExists t)) (TExists t)
-    -> TYPEPROG ds (ke :> KStar) ((liftTE 0 te) :> t) p t2
-    -> TYPEPROG ds ke te (PLET (IADT tr x (TExists t)) p) (substTT 0 tr t2)
+| TYLet : (* forall ds ke te tr x t p t2, *)
+    forall ds ke te tr ms ts t2 p,
+    TYPEADT ds ke te (IADT tr ms (map (TExists) ts)) (map (TExists) ts)
+    -> TYPEPROG ds (ke :> KStar) ((liftTE 0 te) >< ts) p t2
+    -> TYPEPROG ds ke te (PLET (IADT tr ms (map (TExists) ts)) p) (substTT 0 tr t2)
+    (* TYPEADT ds ke te (IADT tr x (TExists t)) (TExists t) *)
+    (* -> TYPEPROG ds (ke :> KStar) ((liftTE 0 te) :> t) p t2 *)
+    (* -> TYPEPROG ds ke te (PLET (IADT tr x (TExists t)) p) (substTT 0 tr t2) *)
 | TYExp : forall ds ke te x t,
     TYPE ds ke te x t
     -> TYPEPROG ds ke te (PEXP x) t.
@@ -150,6 +169,12 @@ Ltac invert_prog_type :=
   repeat
     (match goal with
      | [ H : TYPEPROG _ _ _ _ _ |- _] => inverts H
+    end).
+
+Ltac inverts_method_type :=
+  repeat
+    (match goal with
+     | [ H : TYPEMETHOD _ _ _ _ _ |- _ ] => inverts H
     end).
 
 Ltac inverts_type :=
