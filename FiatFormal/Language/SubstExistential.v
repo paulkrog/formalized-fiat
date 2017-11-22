@@ -43,7 +43,7 @@ Proof.
   unfold liftTE in *.
   rewrite map_delete.
   rewrite delete_app.
-  apply mapCtor in H9; subst.
+  apply mapCtor in H8; subst.
   assert (length ms = length (map (substTT 0 tr) ts)).
   eapply Forall2_length; eauto.
   rewrite map_length in H. rewrite H.
@@ -210,7 +210,7 @@ Proof.
   apply (Forall2_impl_in (fun m t => TYPEMETHOD tr ds ke te m (substTT 0 tr t))); eauto; intros.
   destruct x; simpl. inverts H4; subst.
   rewrite <- Hcomp.
-  rewrite <- H16. simpl. (* needed to generalize Hcomp' for all ty -> In ty ts0 *)
+  rewrite <- H15. simpl. (* needed to generalize Hcomp' for all ty -> In ty ts0 *)
   rewrite map_app.
   rewrite dup_map.
 
@@ -240,7 +240,7 @@ Proof.
 
   (* new *)
   unfold substTE in *. rewrite <- map_app.
-  apply mapCtor in H9; subst.
+  apply mapCtor in H8; subst.
   (* end new *)
 
   eapply IHTYPEPROG.

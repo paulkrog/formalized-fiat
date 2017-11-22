@@ -25,7 +25,7 @@ Proof.
   invert H; intros; subst.
 
   (* new *)
-  inversion H7; subst.
+  inversion H6; subst.
   eapply subst_ADT_prog'; eauto.
   cut (forall m t, TYPEMETHOD r ds nil nil m (substTT 0 r t)
               -> TYPE ds nil nil (body m) (substTT 0 r t)); intros.
@@ -34,7 +34,7 @@ Proof.
   eapply Forall2_impl with (R1 := (fun m y => TYPEMETHOD r ds nil nil m (substTT 0 r y))).
   intros. apply H. auto.
   apply Forall2_map_right'.
-  apply mapCtor in H5; subst; auto.
+  apply mapCtor in H4; subst; auto.
   intros. inversion H0; auto.
   inversion H; subst. simpl; auto.
   (* end new *)
@@ -43,7 +43,7 @@ Proof.
   invert HS; intros; subst.
   invert HT; intros; subst.
   apply TYExp.
-  apply (preservation _ _ _ _ _ _ H4 H0).
+  apply (preservation _ _ _ _ _ _ H3 H0).
 Qed.
 (* Proof. *)
 (*   intros pb ds pbOK p p' t HT HS. *)

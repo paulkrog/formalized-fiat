@@ -1,7 +1,6 @@
 (* Todo: *)
 
 (*   -list method -> list ty ==> list (method * ty)
-     -make defs a parameter to all typing relations
      -write refinesADT'
 *)
 
@@ -44,67 +43,85 @@ Definition getBody (m : method) :=
 
 (* Definition wfRefinement (aOld aNew : adt) :=. *)
 
-(* Inductive refinesADT'  *)
-(*            (ProofBuilder : propcon -> list exp -> Prop) *)
-(*            (ds : defs) *)
-(*            (ProofBuilderOK : forall ke te pc xs ts, *)
-(*                ProofBuilder pc xs *)
-(*                -> getPropDef pc ds = Some (DefProp pc ts) *)
-(*                -> Forall2 (TYPE ds ke te) xs ts) *)
-(*   : adt -> adt -> Prop := *)
-(* |  => *)
-(*    refinesADT' _ _ _ IADT _____ IADT ______ *)
-
-Definition refinesADT
+Inductive refinesADT'
            (ProofBuilder : propcon -> list exp -> Prop)
            (ds : defs)
            (ProofBuilderOK : forall ke te pc xs ts,
                ProofBuilder pc xs
                -> getPropDef pc ds = Some (DefProp pc ts)
                -> Forall2 (TYPE ds ke te) xs ts)
-           (aOld aNew : adt) :=
+  : adt -> adt -> Prop :=
+| CREFINE :
+    forall methodsNew repNew sigsNew methodsOld repOld sigsOld,
+    (exists (R : exp -> exp -> Prop),
+    forall n arity dom bodyOld bodyNew cod
+      v vs repNew' repsNew repsOld,
+      get n methodsOld = Some (mkMethod arity dom bodyOld cod)
+      -> get n methodsNew = Some (mkMethod arity dom bodyNew cod)
+      -> Forall wnfX vs
+      -> Forall2 R repsOld repsNew
+      -> STEPS ProofBuilder ds ProofBuilderOK
+              (XNApp (bodyNew) (repsNew >< vs))
+              (XTup ((nil :> v) :> repNew'))
+      -> (exists repOld',
+          STEPS ProofBuilder ds ProofBuilderOK
+                (XNApp (bodyOld) (repsOld >< vs))
+                (XTup ((nil :> v) :> repOld'))
+          /\ R repOld' repNew'))
+          -> refinesADT' ProofBuilder ds ProofBuilderOK
+                        (IADT repOld methodsOld sigsOld)
+                        (IADT repNew methodsNew sigsNew).
+
+(* Definition refinesADT *)
+(*            (ProofBuilder : propcon -> list exp -> Prop) *)
+(*            (ds : defs) *)
+(*            (ProofBuilderOK : forall ke te pc xs ts, *)
+(*                ProofBuilder pc xs *)
+(*                -> getPropDef pc ds = Some (DefProp pc ts) *)
+(*                -> Forall2 (TYPE ds ke te) xs ts) *)
+(*            (aOld aNew : adt) := *)
 
 
-  forall repTypeOld repTypeNew,
-    getRepType aOld = repTypeOld
-    -> getRepType aNew = repTypeNew
-    -> exists (absRel : exp -> exp -> Prop), (* This is not correct? *)
-      forall n mOld mNew
-        methodsNew methodsOld
-        mDomNew mDomOld
-        arityNew arityOld
-        repsNew repsOld
-        bodyNew bodyOld
-        vs,
+(*   forall repTypeOld repTypeNew, *)
+(*     getRepType aOld = repTypeOld *)
+(*     -> getRepType aNew = repTypeNew *)
+(*     -> exists (absRel : exp -> exp -> Prop), (* This is not correct? *) *)
+(*       forall n mOld mNew *)
+(*         methodsNew methodsOld *)
+(*         mDomNew mDomOld *)
+(*         arityNew arityOld *)
+(*         repsNew repsOld *)
+(*         bodyNew bodyOld *)
+(*         vs, *)
 
-        getMethods aNew = methodsNew
-        -> getMethods aOld = methodsOld
-        -> length methodsNew = length methodsOld
-        -> get n methodsNew = Some mNew
-        -> get n methodsOld = Some mOld
-        -> getDom mNew = mDomNew
-        -> getDom mOld = mDomOld
-        -> mDomNew = mDomOld
-        -> getArity mOld = arityOld
-        -> getArity mNew = arityNew
-        -> arityNew = arityOld
-        -> getBody mNew = bodyNew
-        -> getBody mOld = bodyOld
+(*         getMethods aNew = methodsNew *)
+(*         -> getMethods aOld = methodsOld *)
+(*         -> length methodsNew = length methodsOld *)
+(*         -> get n methodsNew = Some mNew *)
+(*         -> get n methodsOld = Some mOld *)
+(*         -> getDom mNew = mDomNew *)
+(*         -> getDom mOld = mDomOld *)
+(*         -> mDomNew = mDomOld *)
+(*         -> getArity mOld = arityOld *)
+(*         -> getArity mNew = arityNew *)
+(*         -> arityNew = arityOld *)
+(*         -> getBody mNew = bodyNew *)
+(*         -> getBody mOld = bodyOld *)
 
-        -> length vs = length mDomNew
-        -> Forall wnfX vs
-        -> length repsNew = arityNew
-        -> Forall2 (absRel) repsOld repsNew
+(*         -> length vs = length mDomNew *)
+(*         -> Forall wnfX vs *)
+(*         -> length repsNew = arityNew *)
+(*         -> Forall2 (absRel) repsOld repsNew *)
 
-        -> forall v repNew',
-            STEPS ProofBuilder ds ProofBuilderOK
-                  (XNApp (bodyNew) (repsNew >< vs))
-                  (XTup ((nil :> v) :> repNew'))
-            -> exists repOld',
-              STEPS ProofBuilder ds ProofBuilderOK
-                    (XNApp (bodyOld) (repsOld >< vs))
-                    (XTup ((nil :> v) :> repOld'))
-              /\ absRel repOld' repNew'.
+(*         -> forall v repNew', *)
+(*             STEPS ProofBuilder ds ProofBuilderOK *)
+(*                   (XNApp (bodyNew) (repsNew >< vs)) *)
+(*                   (XTup ((nil :> v) :> repNew')) *)
+(*             -> exists repOld', *)
+(*               STEPS ProofBuilder ds ProofBuilderOK *)
+(*                     (XNApp (bodyOld) (repsOld >< vs)) *)
+(*                     (XTup ((nil :> v) :> repOld')) *)
+(*               /\ absRel repOld' repNew'. *)
 
 (* Definition getArity (ts : list ty) (x : exp) (m : (XNFun ts x)) := *)
 (*   length ts. *)
