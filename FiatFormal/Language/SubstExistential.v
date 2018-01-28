@@ -36,14 +36,14 @@ Proof.
   apply (Forall2_map_right (fun (x : method) (y : ty) =>
                               TYPEMETHOD tr ds ke (delete ix te) (substXM ix s x) y)).
   apply (Forall2_impl_in (fun m t => TYPEMETHOD tr ds ke te m (substTT 0 tr t))); eauto; intros.
-  destruct x; simpl. inverts H4; subst. eapply TYMETHOD; eauto.
+  destruct x; simpl. inverts H5; subst. eapply TYMETHOD; eauto.
   eapply subst_value_value_ix; first [ eassumption; assumption ].
   apply Forall2_map_right'; auto.
   (* prove B generalized *)
   unfold liftTE in *.
   rewrite map_delete.
   rewrite delete_app.
-  apply mapCtor in H8; subst.
+  apply mapCtor in H9; subst.
   assert (length ms = length (map (substTT 0 tr) ts)).
   eapply Forall2_length; eauto.
   rewrite map_length in H. rewrite H.
@@ -56,44 +56,15 @@ Proof.
   rewrite <- map_delete.
   pose proof type_kienv_weaken.
   unfold liftTE in H3.
-  apply H3. assumption.
+  apply H4. assumption.
   (* injective cTor *)
   intros; inversion H; auto.
+  assumption.
   Case "PExp".
   apply TYExp.
   eapply subst_value_value_ix; first [ eassumption |  assumption].
 Qed.
-(* Theorem subst_exp_prog_ix : *)
-(*   forall ds ke te t1 ix p t2 s, *)
-(*     get ix te = Some t1 *)
-(*     -> TYPE ds ke (delete ix te) s t1 *)
-(*     -> TYPEPROG ds ke te p t2 *)
-(*     -> TYPEPROG ds ke (delete ix te) (substXP ix s p) t2. *)
-(* Proof. *)
-(*   intros. gen s ix t1. *)
-(*   induction H1; intros. *)
-(*   Case "PLet". *)
-(*   invert H; intros; subst; simpl. *)
-(*   apply TYLet. *)
-(*   (* prove A generalized *) *)
-(*   apply TYADT; try assumption. *)
-(*   eapply subst_value_value_ix; first [ eassumption; assumption ]. *)
-(*   (* prove B generalized *) *)
-(*   unfold liftTE in *. *)
-(*   rewrite map_delete. *)
-(*   rewrite delete_rewind. *)
-(*   eapply IHTYPEPROG; simpl. *)
-(*   apply get_map. *)
-(*   eassumption. *)
-(*   apply type_tyenv_weaken. *)
-(*   rewrite <- map_delete. *)
-(*   pose proof type_kienv_weaken. *)
-(*   unfold liftTE in H. *)
-(*   apply H. assumption. *)
-(*   Case "PExp". *)
-(*   apply TYExp. *)
-(*   eapply subst_value_value_ix; first [ eassumption |  assumption]. *)
-(* Qed. *)
+
 
 Theorem subst_exp_prog
   : forall ds ke te t1 p t2 s,
@@ -137,35 +108,7 @@ Proof.
         rrwrite (length xs = length ts).
         eapply type_tyenv_weaken_append. auto.
 Qed.
-(* Theorem subst_exp_exp_list *)
-(*   : forall ds ks te x1 xs t1 ts, *)
-(*     Forall2 (TYPE ds ks te) xs ts *)
-(*     -> TYPE ds ks (te >< ts) x1 t1 *)
-(*     -> TYPE ds ks te (substXXs 0 xs x1) t1. *)
-(* Proof. *)
-(*   intros ds ks te x1 xs t1 ts HF HT. *)
-(*   gen ts ks x1. *)
-(*   induction xs; intros; invert_exp_type. *)
 
-(*   - Case "base case". *)
-(*     destruct ts. *)
-(*     + simpl. auto. *)
-(*     + nope. *)
-
-(*   - Case "step case". *)
-(*     simpl. *)
-(*     destruct ts. *)
-(*     + nope. *)
-(*     + inverts HF. *)
-(*       eapply IHxs. *)
-(*       * eauto. *)
-(*       * simpl in HT. *)
-(*         eapply subst_value_value. *)
-(*         eauto. *)
-(*         rrwrite (length xs = length ts). *)
-(*         eapply type_tyenv_weaken_append. auto. *)
-(* Qed. *)
-(* end new *)
 
 Theorem subst_type_prog_ix
   : forall ds ix ke kx S te p t,
@@ -178,13 +121,15 @@ Proof.
   induction H1; intros.
   Case "PLet".
   simpl. invert H; intros; subst.
+
   assert
     (Hcomp : forall ix S tr t, substTT (0 + ix) S (substTT 0 tr t)
              = (substTT 0 (substTT (0 + ix) S tr)
                         (substTT (1 + 0 + ix) (liftTT 0 S) t))); intros.
   apply substTT_substTT with (n:=0) (m:=ix0).
   simpl in Hcomp.
-  rewrite Hcomp.
+  (* rewrite Hcomp. *)
+
   (* new *)
   rewrite map_map.
   simpl. rewrite <- map_map with (f:=(substTT (Datatypes.S ix) (liftTT 0 S))).
@@ -208,9 +153,11 @@ Proof.
      TYPEMETHOD (substTT ix S tr) ds (delete ix ke) (substTE ix S te) (substTM ix S x)
        (substTT 0 (substTT ix S tr) y))).
   apply (Forall2_impl_in (fun m t => TYPEMETHOD tr ds ke te m (substTT 0 tr t))); eauto; intros.
-  destruct x; simpl. inverts H4; subst.
+  destruct x; simpl. inverts H5; subst.
+
+simpl.
   rewrite <- Hcomp.
-  rewrite <- H15. simpl. (* needed to generalize Hcomp' for all ty -> In ty ts0 *)
+  rewrite <- H16. simpl. (* needed to generalize Hcomp' for all ty -> In ty ts0 *)
   rewrite map_app.
   rewrite dup_map.
 
@@ -240,7 +187,7 @@ Proof.
 
   (* new *)
   unfold substTE in *. rewrite <- map_app.
-  apply mapCtor in H8; subst.
+  apply mapCtor in H9; subst.
   (* end new *)
 
   eapply IHTYPEPROG.

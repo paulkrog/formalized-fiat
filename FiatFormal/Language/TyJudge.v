@@ -129,14 +129,18 @@ Hint Constructors TYPEADT.
 
 (* Program judgement assigns a type to a program. *)
 Inductive TYPEPROG (ds : defs) : kienv -> tyenv -> prog -> ty -> Prop :=
-| TYLet : (* forall ds ke te tr x t p t2, *)
+
+| TYLet :
+    (* forall ke te tr ms ts t2 p, *)
+    (* TYPEADT ds ke te (IADT tr ms (map (TExists) ts)) (map (TExists) ts) *)
+    (* -> TYPEPROG ds (ke :> KStar) ((liftTE 0 te) >< ts) p t2 *)
+    (* -> TYPEPROG ds ke te (PLET (IADT tr ms (map (TExists) ts)) p) (substTT 0 tr t2) *)
     forall ke te tr ms ts t2 p,
     TYPEADT ds ke te (IADT tr ms (map (TExists) ts)) (map (TExists) ts)
     -> TYPEPROG ds (ke :> KStar) ((liftTE 0 te) >< ts) p t2
-    -> TYPEPROG ds ke te (PLET (IADT tr ms (map (TExists) ts)) p) (substTT 0 tr t2)
-    (* TYPEADT ds ke te (IADT tr x (TExists t)) (TExists t) *)
-    (* -> TYPEPROG ds (ke :> KStar) ((liftTE 0 te) :> t) p t2 *)
-    (* -> TYPEPROG ds ke te (PLET (IADT tr x (TExists t)) p) (substTT 0 tr t2) *)
+    -> KIND ke t2 KStar
+    -> TYPEPROG ds ke te (PLET (IADT tr ms (map (TExists) ts)) p) t2
+
 | TYExp : forall ke te x t,
     TYPE ds ke te x t
     -> TYPEPROG ds ke te (PEXP x) t.
@@ -263,6 +267,18 @@ Proof.
  Case "XChoice".
  inverts H0; auto.
  inverts H0; auto.
+Qed.
+
+
+Theorem type_kind_prog :
+  forall ds ke te p t,
+    TYPEPROG ds ke te p t
+    -> KIND ke t KStar.
+Proof.
+  intros. gen ds ke te t.
+  induction p; intros; inverts keep H; eauto.
+  Case "Exp".
+  eapply type_kind; eauto.
 Qed.
 
 
