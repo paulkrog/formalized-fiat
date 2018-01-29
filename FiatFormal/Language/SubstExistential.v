@@ -109,6 +109,20 @@ Proof.
         eapply type_tyenv_weaken_append. auto.
 Qed.
 
+(* Lemma subst_impotent *)
+(*   : forall ds ke te tr ms ts p' t, *)
+(*     TYPEPROG ds ke te (PLET (IADT tr ms ts) p') t *)
+(*     -> substTT 0 tr t = t. *)
+(* Proof. *)
+
+(* Lemma subst_impotent' *)
+(*   : forall ix ke tr t, *)
+(*     KIND ke t KStar *)
+(*     -> ix >= length ke *)
+(*     -> substTT ix tr t = t. *)
+(* Proof. *)
+(*   intros; try inverts keep H; eauto. *)
+(*   Admitted. *)
 
 Theorem subst_type_prog_ix
   : forall ds ix ke kx S te p t,
@@ -130,22 +144,30 @@ Proof.
   simpl in Hcomp.
   (* rewrite Hcomp. *)
 
-  (* new *)
+(* new *)
+  (* assert *)
+  (*   (Hcomp' : forall ix S tr t, substTT ((length ke) + ix) S (substTT (length ke) tr t) *)
+  (*            = (substTT (length ke) (substTT ((length ke) + ix) S tr) *)
+  (*                       (substTT (1 + (length ke) + ix) (liftTT (length ke) S) t))); intros. *)
+  (* apply substTT_substTT with (n:=(length ke)) (m:=ix0). *)
+  (* simpl in Hcomp'. *)
+(* end new *)
+
   rewrite map_map.
   simpl. rewrite <- map_map with (f:=(substTT (Datatypes.S ix) (liftTT 0 S))).
-  (* end new *)
+
   apply TYLet.
   SCase "ADT".
-  (* new *)
-  (* rename t2 into t. *)
-  (* end new *)
+
+
+
   apply TYADT.
   eapply subst_type_type_ix.
   eassumption.
   assumption.
   assumption.
 
-  (* new *)
+
   apply (Forall2_map_left (TYPEMETHOD (substTT ix S tr) ds (delete ix ke) (substTE ix S te))).
   apply (Forall2_map_right (fun (x : method) (y : ty) =>
                               TYPEMETHOD (substTT ix S tr) ds (delete ix ke) (substTE ix S te) (substTM ix S x) y)).
@@ -170,25 +192,30 @@ simpl.
   rewrite <- map_app.
   auto.
   rewrite Hsubst.
-  (* end new *)
+
 
   eapply subst_type_exp_ix.
   eassumption.
   assumption.
   assumption.
 
-  (* new *)
+
   apply Forall2_map_right'; auto.
-  (* end new *)
+
 
   SCase "PROG".
-  rewrite delete_rewind in *.
+  (* rewrite delete_rewind in *. *)
   rewrite liftTE_substTE with (n:=0) (n':=ix).
 
-  (* new *)
+
   unfold substTE in *. rewrite <- map_app.
   apply mapCtor in H9; subst.
-  (* end new *)
+
+(* new *)
+  rewrite liftTT_substTT with (n:=0) (n':=ix).
+  simpl.
+  rewrite delete_rewind in *.
+(* end new *)
 
   eapply IHTYPEPROG.
   simpl.
@@ -197,9 +224,11 @@ simpl.
   eapply liftTT_weaken.
   assumption.
 
-  (* new *)
+
   intros. inversion H; auto.
-  (* end new *)
+  (* new *)
+  eapply subst_type_type_ix; eauto.
+(* end new *)
 
   Case "PExp".
   apply TYExp.
@@ -208,51 +237,6 @@ simpl.
   assumption.
   assumption.
 Qed.
-(* Proof. *)
-  (* intros. gen S ix kx. *)
-  (* induction H1; intros. *)
-  (* Case "PLet". *)
-  (* simpl. invert H; intros; subst. *)
-  (* assert *)
-  (*   (Hcomp : substTT (0 + ix) S (substTT 0 tr t2) *)
-  (*            = (substTT 0 (substTT (0 + ix) S tr) *)
-  (*                       (substTT (1 + 0 + ix) (liftTT 0 S) t2))). *)
-  (* apply substTT_substTT with (n:=0) (m:=ix). *)
-  (* simpl in Hcomp. *)
-  (* rewrite Hcomp. *)
-  (* apply TYLet. *)
-  (* SCase "ADT". *)
-  (* apply TYADT. *)
-  (* eapply subst_type_type_ix. *)
-  (* eassumption. *)
-  (* assumption. *)
-  (* assumption. *)
-  (* assert (Hcomp' : substTT (0 + ix) S (substTT 0 tr t) *)
-  (*                  = (substTT 0 (substTT (0 + ix) S tr) *)
-  (*                             (substTT (1 + 0 + ix) (liftTT 0 S) t))). *)
-  (* apply substTT_substTT with (n:=0) (m:=ix). *)
-  (* simpl in Hcomp'. *)
-  (* rewrite <- Hcomp'. *)
-  (* eapply subst_type_exp_ix. *)
-  (* eassumption. *)
-  (* assumption. *)
-  (* assumption. *)
-  (* SCase "PROG". *)
-  (* rewrite delete_rewind in *. *)
-  (* rewrite liftTE_substTE with (n:=0) (n':=ix). *)
-  (* eapply IHTYPEPROG. *)
-  (* simpl. *)
-  (* eassumption. *)
-  (* simpl. *)
-  (* eapply liftTT_weaken. *)
-  (* assumption. *)
-  (* Case "PExp". *)
-  (* apply TYExp. *)
-  (* eapply subst_type_exp_ix. *)
-  (* eassumption. *)
-  (* assumption. *)
-  (* assumption. *)
-(* Qed. *)
 
 Theorem subst_type_prog
   : forall ds ke te X S p t,
@@ -268,22 +252,42 @@ Proof.
 Qed.
 
 (* Main lemma supporting preservation *)
+(* Theorem subst_ADT_prog : *)
+(*   forall ds X r kr t1 t2 x p, *)
+(*     TYPEPROG ds (nil :> X) (nil :> t1) p t2 *)
+(*     -> KIND nil r kr *)
+(*     -> TYPE ds nil nil x (substTT 0 r t1) *)
+(*     -> TYPEPROG ds nil nil (substXP 0 x (substTP 0 r p)) (substTT 0 r t2). *)
+(* Proof. *)
+(*   intros ds X r kr t1 t2 x p HP HK HT. *)
+(*   pose proof (subst_type_prog) as STP. *)
+(*   specialize (STP _ _ _ _ r _ _ HP). *)
+(*   pose proof *)
+(*        (subst_exp_prog ds nil nil (substTT 0 r t1) (substTP 0 r p) (substTT 0 r t2)) *)
+(*     as ESL. *)
+(*   simpl in *. *)
+(*   destruct kr. *)
+(*   specialize (STP HK). *)
+(*   specialize (ESL x STP). *)
+(*   specialize (ESL HT). *)
+(*   assumption. *)
+(* Qed. *)
 Theorem subst_ADT_prog :
   forall ds X r kr t1 t2 x p,
-    TYPEPROG ds (nil :> X) (nil :> t1) p t2
+    TYPEPROG ds (nil :> X) (nil :> t1) p (liftTT 0 t2)
     -> KIND nil r kr
     -> TYPE ds nil nil x (substTT 0 r t1)
-    -> TYPEPROG ds nil nil (substXP 0 x (substTP 0 r p)) (substTT 0 r t2).
+    -> TYPEPROG ds nil nil (substXP 0 x (substTP 0 r p)) t2.
 Proof.
   intros ds X r kr t1 t2 x p HP HK HT.
   pose proof (subst_type_prog) as STP.
   specialize (STP _ _ _ _ r _ _ HP).
   pose proof
-       (subst_exp_prog ds nil nil (substTT 0 r t1) (substTP 0 r p) (substTT 0 r t2))
+       (subst_exp_prog ds nil nil (substTT 0 r t1) (substTP 0 r p) (t2))
     as ESL.
   simpl in *.
   destruct kr.
-  specialize (STP HK).
+  specialize (STP HK). rewrite substTT_liftTT in STP.
   specialize (ESL x STP).
   specialize (ESL HT).
   assumption.
@@ -292,21 +296,21 @@ Qed.
 (* new *)
 Theorem subst_ADT_prog' :
   forall ds X r kr ts t2 xs p,
-    TYPEPROG ds (nil :> X) (nil >< ts) p t2
+    TYPEPROG ds (nil :> X) (nil >< ts) p (liftTT 0 t2)
     -> KIND nil r kr
     -> Forall2 (TYPE ds nil nil) xs (map (substTT 0 r) ts)
-    -> TYPEPROG ds nil nil (substXXsP 0 xs (substTP 0 r p)) (substTT 0 r t2).
+    -> TYPEPROG ds nil nil (substXXsP 0 xs (substTP 0 r p)) t2.
 Proof.
   intros ds X r kr ts t2 xs p HP HK HT.
   pose proof (subst_type_prog) as STP.
   specialize (STP _ _ _ _ r _ _ HP).
   pose proof
-       (subst_exp_prog_list ds nil nil (map (substTT 0 r) ts) (substTP 0 r p) (substTT 0 r t2))
+       (subst_exp_prog_list ds nil nil (map (substTT 0 r) ts) (substTP 0 r p) t2)
     as ESL.
   simpl in *.
   destruct kr.
   specialize (STP HK);
-    unfold substTE in STP.
+    unfold substTE in STP. rewrite substTT_liftTT in STP.
   rewrite map_app in STP; simpl in *.
   specialize (ESL xs HT).
   specialize (ESL STP).

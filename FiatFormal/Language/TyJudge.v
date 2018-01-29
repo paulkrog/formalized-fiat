@@ -137,8 +137,8 @@ Inductive TYPEPROG (ds : defs) : kienv -> tyenv -> prog -> ty -> Prop :=
     (* -> TYPEPROG ds ke te (PLET (IADT tr ms (map (TExists) ts)) p) (substTT 0 tr t2) *)
     forall ke te tr ms ts t2 p,
     TYPEADT ds ke te (IADT tr ms (map (TExists) ts)) (map (TExists) ts)
-    -> TYPEPROG ds (ke :> KStar) ((liftTE 0 te) >< ts) p t2
-    -> KIND ke t2 KStar
+    -> TYPEPROG ds (ke :> KStar) ((liftTE 0 te) >< ts) p (liftTT 0 t2)
+    -> KIND ke t2 KStar (* derivable, after: [t2 -> (liftTT 0 t2)] ? *)
     -> TYPEPROG ds ke te (PLET (IADT tr ms (map (TExists) ts)) p) t2
 
 | TYExp : forall ke te x t,

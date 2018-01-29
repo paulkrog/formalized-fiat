@@ -24,20 +24,23 @@ Proof.
   invert HT; intros; subst.
   invert H; intros; subst.
 
-  (* new *)
-  inversion H6; subst.
+(* new *)
+  invert H4; intros; subst.
+(* end new *)
+
   eapply subst_ADT_prog'; eauto.
   cut (forall m t, TYPEMETHOD r ds nil nil m (substTT 0 r t)
               -> TYPE ds nil nil (body m) (substTT 0 r t)); intros.
+
   apply Forall2_map_left.
   apply Forall2_map_right.
   eapply Forall2_impl with (R1 := (fun m y => TYPEMETHOD r ds nil nil m (substTT 0 r y))).
   intros. apply H. auto.
   apply Forall2_map_right'.
-  apply mapCtor in H4; subst; auto.
-  intros. inversion H0; auto.
+  apply mapCtor in H5; subst; auto.
+  intros. inversion H5; auto.
+  inversion H0; subst. simpl; auto.
   inversion H; subst. simpl; auto.
-  (* end new *)
 
   Case "PExp".
   invert HS; intros; subst.
