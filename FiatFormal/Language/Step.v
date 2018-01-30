@@ -60,6 +60,7 @@ Inductive STEP
     -> STEP ProofBuilder ds ProofBuilderOK (XChoice t pc vs) v.
 Hint Constructors STEP.
 
+
 Lemma step_context_XCon_exists
   : forall pb ds pbOK C x dc,
     exps_ctx wnfX C
@@ -176,6 +177,7 @@ Hint Constructors STEPSP.
 
 Ltac nopes := nope; nope.
 
+
 (* Stepping a wnf doesn't change it. *)
 Lemma step_wnfX
   : forall pb ds pbOK x v,
@@ -282,6 +284,7 @@ Inductive STEPSL
      -> STEPSL ProofBuilder ds ProofBuilderOK x2 x3
      -> STEPSL ProofBuilder ds ProofBuilderOK x1 x3.
 Hint Constructors STEPSL.
+
 
 Inductive STEPSLP
           (ProofBuilder : propcon -> list exp -> Prop)

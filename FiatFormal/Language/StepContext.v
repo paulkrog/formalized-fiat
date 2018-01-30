@@ -6,6 +6,7 @@ Require Import FiatFormal.Language.Exp.
 Require Export FiatFormal.Data.Context.
 Require Export FiatFormal.Data.Chain.
 
+
 (* TODO: consider implications of below definition...
          esp. that nary function application requires
          value of function but only wnfX of args *)

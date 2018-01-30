@@ -46,6 +46,13 @@ Inductive ty  : Type :=
  | TNFun    : list ty -> ty -> ty. (* Arity n function type *)
 Hint Constructors ty.
 
+
+Ltac custom_ind_help :=
+  match goal with
+  | [ H : forall x, ?P x |- ?P ?y ] => apply H
+  end.
+
+
 (* Need to prove induction principle by hand because of the presence
 of "list" in the definition of type *)
 Theorem ty_ind :
@@ -62,7 +69,6 @@ Proof.
   intros PT.
   intros tcon tvar tfun texists tnprod tnfun.
   refine (fix IHT t : PT t := _).
-  intros.
   case t; intros.
   Case "TCon".
   apply tcon.
@@ -105,9 +111,11 @@ Inductive def  : Type :=
     -> def.
 Hint Constructors def.
 
+
 (* Definition environment.
    Holds the definitions of all current type, data and proposition constructors. *)
 Definition defs  := list def.
+
 
 (* Lookup the def of a given type constructor.
    Returns None if it's not in the list. *)
@@ -197,6 +205,7 @@ Inductive simpleType : ty -> Prop :=
     -> simpleType (TNFun ts tRes).
 Hint Constructors simpleType.
 
+
 (* Well-formed types (w.r.t kind environments) *)
 Inductive wfT : kienv -> ty -> Prop :=
 | WfT_TCon : forall ke tc,
@@ -219,6 +228,7 @@ Inductive wfT : kienv -> ty -> Prop :=
     wfT (ke :> KStar) t
     -> wfT ke (TExists t).
 Hint Constructors wfT.
+
 
 (* A closed type is well formed under an empty kind environment. *)
 Definition closedT (tt: ty) : Prop
@@ -253,6 +263,7 @@ Fixpoint liftTT (d: nat) (tt: ty) : ty :=
   end.
 Hint Unfold liftTT.
 
+
 (* Lifting a simple type does not change it *)
 Lemma simpleLiftEq :
   forall t d,
@@ -271,7 +282,7 @@ Proof.
   pose proof (Forall_mp _ _ _ H0 H2).
   repeat nforall.
   apply Forall2_eq.
-  apply Forall2_map_right.
+  forall2_pull_in_maps.
   apply Forall2_impl_in with (R1:=eq).
   intros; subst.
   apply H; auto.
@@ -282,7 +293,7 @@ Proof.
   pose proof (Forall_mp _ _ _ H0 H4).
   repeat nforall.
   apply Forall2_eq.
-  apply Forall2_map_right.
+  forall2_pull_in_maps.
   apply Forall2_impl_in with (R1:=eq).
   intros; subst.
   apply H; auto.
@@ -290,6 +301,7 @@ Proof.
   apply Forall2_cons; auto.
 Qed.
 Hint Rewrite simpleLiftEq.
+
 
 Lemma simpleLiftMapEq :
   forall ts d,
@@ -339,6 +351,7 @@ Fixpoint substTT (d: nat) (u: ty) (tt: ty) : ty
       => TNFun (map (substTT d u) ts) (substTT d u tRes)
   end.
 
+
 (* Substituting into a simple type does not change it *)
 Lemma simpleSubstEq :
   forall t1 t2 d,
@@ -375,6 +388,7 @@ Proof.
   induction ts; eauto.
   apply Forall2_cons; auto.
 Qed.
+
 
 Lemma simpleSubstMapEq :
   forall ts t2 d,

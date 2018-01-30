@@ -99,7 +99,6 @@ Hint Constructors TYPE.
 Hint Constructors TYPEA.
 
 
-(* -------------------------------------------------- *)
 Fixpoint dup {A : Type} (a : A) (c : nat) : list A :=
   match c with
   | O => nil
@@ -112,12 +111,14 @@ Proof.
   induction c; burn.
 Qed.
 
+
 Inductive TYPEMETHOD (rep : ty) (ds : defs) : kienv -> tyenv -> method -> ty -> Prop :=
 | TYMETHOD : forall ke te arity dom body cod tRes,
     cod = (TNProd ((nil :> rep) :> tRes))
     -> TYPE ds ke te body (TNFun ((dup rep arity) >< dom) cod)
     -> TYPEMETHOD rep ds ke te (mkMethod arity dom body cod) (TNFun ((dup rep arity) >< dom) cod).
 Hint Constructors TYPEMETHOD.
+
 
 (* ADT judgement assigns a type to an ADT. *)
 Inductive TYPEADT (ds : defs) : kienv -> tyenv -> adt -> list ty -> Prop :=
@@ -127,9 +128,9 @@ Inductive TYPEADT (ds : defs) : kienv -> tyenv -> adt -> list ty -> Prop :=
     -> TYPEADT ds ke te (IADT tr ms (map (TExists) ts)) (map (TExists) ts).
 Hint Constructors TYPEADT.
 
+
 (* Program judgement assigns a type to a program. *)
 Inductive TYPEPROG (ds : defs) : kienv -> tyenv -> prog -> ty -> Prop :=
-
 | TYLet :
     (* forall ke te tr ms ts t2 p, *)
     (* TYPEADT ds ke te (IADT tr ms (map (TExists) ts)) (map (TExists) ts) *)
@@ -140,7 +141,6 @@ Inductive TYPEPROG (ds : defs) : kienv -> tyenv -> prog -> ty -> Prop :=
     -> TYPEPROG ds (ke :> KStar) ((liftTE 0 te) >< ts) p (liftTT 0 t2)
     -> KIND ke t2 KStar (* derivable, after: [t2 -> (liftTT 0 t2)] ? *)
     -> TYPEPROG ds ke te (PLET (IADT tr ms (map (TExists) ts)) p) t2
-
 | TYExp : forall ke te x t,
     TYPE ds ke te x t
     -> TYPEPROG ds ke te (PEXP x) t.
@@ -151,6 +151,7 @@ Ltac invert_adt_type :=
     (match goal with
      | [ H : TYPEADT _ _ _ ?a _ |- _ ] => destruct a; inverts H
      end).
+
 
 Ltac invert_exp_type :=
   repeat
@@ -168,17 +169,20 @@ Ltac invert_exp_type :=
      | [ H: TYPEA _ _ _ (AAlt _ _ _)    _ _  |- _ ] => inverts H
     end).
 
+
 Ltac invert_prog_type :=
   repeat
     (match goal with
      | [ H : TYPEPROG _ _ _ _ _ |- _] => inverts H
     end).
 
+
 Ltac inverts_method_type :=
   repeat
     (match goal with
      | [ H : TYPEMETHOD _ _ _ _ _ |- _ ] => inverts H
     end).
+
 
 Ltac inverts_type :=
   repeat
@@ -207,6 +211,7 @@ Proof.
     split. simpl. auto. auto.
 Qed.
 
+
 (* ----------------------------------------------------- *)
 (* The type produced by a type judgement is well kinded. *)
 Theorem type_kind
@@ -218,7 +223,8 @@ Proof.
  induction x using exp_mutind
    with (PA := fun a => forall ds ke te tBuilds tRes,
                    TYPEA ds ke te a tBuilds tRes
-                   -> KIND ke tRes KStar); intros; try (first [inverts H | inverts H0]); eauto.
+                   -> KIND ke tRes KStar);
+   intros; try (first [inverts H | inverts H0]); eauto.
 
  Case "XApp".
  eapply IHx1 in H4. inverts H4. auto.
@@ -292,7 +298,8 @@ Proof.
   induction x using exp_mutind
     with (PA := fun a => forall ds ke te tBuilds tRes,
                     TYPEA ds ke te a tBuilds tRes
-                    -> wfA ke te a); intros; simpl.
+                    -> wfA ke te a);
+    intros; simpl.
 
   Case "XVar".
   inverts H. eauto.
@@ -394,7 +401,10 @@ Qed.
 Lemma type_kienv_insert
   : forall ix ds ke te x1 t1 k2,
     TYPE ds ke te x1 t1
- -> TYPE ds (insert ix k2 ke) (liftTE ix te) (liftTX ix x1) (liftTT ix t1).
+    -> TYPE ds (insert ix k2 ke)
+           (liftTE ix te)
+           (liftTX ix x1)
+           (liftTT ix t1).
 Proof.
   intros. gen ix ds ke te t1 k2.
   induction x1 using exp_mutind
@@ -416,8 +426,7 @@ Proof.
 
   Case "XTup".
   eapply TYTup; simpl; auto.
-  apply (Forall2_map_left (TYPE ds (insert ix k2 ke) (liftTE ix te))).
-  apply (Forall2_map_right (fun (x : exp) (y : ty) => TYPE ds (insert ix k2 ke) (liftTE ix te) (liftTX ix x) y)).
+  forall2_pull_in_maps.
   apply (Forall2_impl_in  (TYPE ds ke te)); eauto.
   nforall. intros.
   eapply H; eauto.
@@ -441,8 +450,7 @@ Proof.
   rewrite <- H0.
   apply IHx1; auto.
 
-  apply (Forall2_map_left (TYPE ds (insert ix k2 ke) (liftTE ix te))).
-  apply (Forall2_map_right (fun (x : exp) (y : ty) => TYPE ds (insert ix k2 ke) (liftTE ix te) (liftTX ix x) y)).
+  forall2_pull_in_maps.
   apply (Forall2_impl_in  (TYPE ds ke te)); eauto.
   nforall. intros.
   eapply H; eauto.
@@ -457,7 +465,7 @@ Proof.
 
   Case "XCon".
   eapply TYCon; eauto.
-  apply (Forall2_map_left (TYPE ds (insert ix k2 ke) (liftTE ix te))).
+  forall2_pull_in_maps.
   apply (Forall2_impl_in  (TYPE ds ke te)); eauto.
   nforall; eauto.
   intros. spec H5 H1.
@@ -479,7 +487,7 @@ Proof.
   spec H H0. spec H H1. eauto.
   rewrite map_length; auto.
 
-  (* norm. *) repeat nforall.
+  repeat nforall.
   intros. rename x into d.
   rewrite map_map. unfold Basics.compose.
   eapply map_exists_in.
@@ -498,7 +506,7 @@ Proof.
   rewrite <- H0; auto.
   apply liftTT_insert; auto.
 
-  apply (Forall2_map_left (TYPE ds (insert ix k2 ke) (liftTE ix te))).
+  forall2_pull_in_maps.
   apply (Forall2_impl_in  (TYPE ds ke te)); eauto.
   nforall; eauto.
   intros. apply In_tl in H1. spec H5 H1.
@@ -567,7 +575,7 @@ Proof.
 
   Case "XTup".
   eapply TYTup; eauto.
-  apply (Forall2_map_left (TYPE ds ke (insert ix t2 te))).
+  forall2_pull_in_maps.
   apply (Forall2_impl_in  (TYPE ds ke te)); eauto.
   nforall. eauto.
 
@@ -577,7 +585,7 @@ Proof.
 
   Case "XNApp".
   eapply TYNApp; eauto.
-  apply (Forall2_map_left (TYPE ds ke (insert ix t2 te))).
+  forall2_pull_in_maps.
   apply (Forall2_impl_in  (TYPE ds ke te)); eauto.
   nforall. eauto.
 
@@ -588,7 +596,7 @@ Proof.
 
   Case "XCon".
   eapply TYCon; eauto.
-  apply (Forall2_map_left (TYPE ds ke (insert ix t2 te))).
+  forall2_pull_in_maps.
   apply (Forall2_impl_in  (TYPE ds ke te)); eauto.
   repeat nforall. eauto.
 
@@ -600,7 +608,7 @@ Proof.
 
   rewrite map_length; auto.
 
-  (* norm. *) repeat nforall.
+  repeat nforall.
   intros. rename x into d.
   rewrite map_map. unfold Basics.compose.
   eapply map_exists_in.
@@ -612,7 +620,7 @@ Proof.
 
   Case "XChoice".
   eapply TYChoice; eauto.
-  apply (Forall2_map_left (TYPE ds ke (insert ix t2 te))).
+  forall2_pull_in_maps.
   apply (Forall2_impl_in  (TYPE ds ke te)); eauto.
   repeat nforall. eauto.
 
@@ -632,6 +640,7 @@ Proof.
   destruct te; auto. rewrite H0.
   apply type_tyenv_insert. auto.
 Qed.
+
 
 Lemma type_tyenv_weaken_append
   : forall ds ke te x1 t1 te',

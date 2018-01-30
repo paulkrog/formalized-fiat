@@ -5,6 +5,7 @@ Require Import FiatFormal.Language.SubstTypeExp.
 Require Import FiatFormal.Language.SubstTypeType.
 Require Import FiatFormal.Language.TyJudge.
 
+
 Lemma In_Context :
   forall C Val x,
     exps_ctx Val C
@@ -13,6 +14,7 @@ Proof.
   intros.
   induction H; auto.
 Qed.
+
 
 Lemma canonicalFormTFun :
   forall ds ke te t1 t2 x,
@@ -26,6 +28,7 @@ Proof.
   exists x; reflexivity.
 Qed.
 
+
 Lemma canonicalFormTNFun :
   forall ds ke te tsArgs tRes x,
     TYPE ds ke te x (TNFun tsArgs tRes)
@@ -37,6 +40,7 @@ Proof.
     with (PA := fun a => a = a); rip; try inverts H0; try nope; try inverts H.
   exists x; reflexivity.
 Qed.
+
 
 Lemma canonicalFormTNProd :
   forall ds ke te ts x,
@@ -50,6 +54,7 @@ Proof.
   exists (@nil exp); reflexivity.
   exists (l0 :> x); reflexivity.
 Qed.
+
 
 Lemma wellTypedProjHasX :
   forall ds ke te ts t xs n,

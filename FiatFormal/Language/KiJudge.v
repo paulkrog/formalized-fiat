@@ -42,10 +42,12 @@ Inductive KIND : kienv -> ty -> ki -> Prop :=
      -> KIND ke (TNFun ts tRes) KStar.
 Hint Constructors KIND.
 
+
 Ltac inverts_kind :=
   match goal with
   | [ H1 : KIND _ _ _ |- _ ] => inverts keep H1
   end.
+
 
 (* ----------------------------- *)
  Ltac notHyp P :=
@@ -84,6 +86,7 @@ Ltac inverts_kind :=
      extend (Forall_in _ _ _ H1 H2); simpl in *; eauto
    end.
 (* ----------------------------- *)
+
 
 (********************************************************************)
 (* A well kinded type is well formed. *)
@@ -127,6 +130,7 @@ Lemma kind_empty_is_closed
 Proof.
  intros. unfold closedT. eapply kind_wfT. eauto.
 Qed.
+
 
 (* We can insert a new type into the environment at an arbitray point
    provided we lift existing references to types higher than this

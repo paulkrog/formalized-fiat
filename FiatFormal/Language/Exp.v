@@ -271,7 +271,6 @@ Inductive wnfX : exp -> Prop :=
      -> wnfX (XCon dc xs).
 Hint Constructors wnfX.
 
-
 (* A well formed expression is closed under the given environments *)
 Inductive wfX : kienv -> tyenv -> exp -> Prop :=
 | WfX_XVar : forall ke te i t,
@@ -324,6 +323,7 @@ Hint Constructors wfX.
 Definition closedX (xx: exp) : Prop
  := wfX nil nil xx.
 Hint Unfold closedX.
+
 
 (* Values are closed expressions that cannot be reduced further. *)
 Inductive value : exp -> Prop :=
@@ -647,6 +647,7 @@ Ltac burn_liftXX_succ :=
     repeat (rewrite map_map);
     rewrite Forall_forall in *
   end.
+
 
 (* When consecutively lifting an expression, we can lift by one
    more place in the first lifting and one less in the second. *)

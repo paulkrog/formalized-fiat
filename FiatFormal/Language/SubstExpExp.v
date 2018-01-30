@@ -39,8 +39,7 @@ Proof.
   auto.
 
   Case "XTup".
-  apply TYTup.
-  apply (Forall2_map_left (TYPE ds ke (delete ix te))).
+  apply TYTup; forall2_pull_in_maps.
   apply (Forall2_impl_in (TYPE ds ke te)); eauto.
   nforall. intros.
   eapply H; eauto.
@@ -56,7 +55,7 @@ Proof.
   eapply TYNApp.
   spec IHx1 H7.
   eapply IHx1; eauto.
-  apply (Forall2_map_left (TYPE ds ke (delete ix te))).
+  forall2_pull_in_maps.
   apply (Forall2_impl_in (TYPE ds ke te)); eauto.
   nforall. intros.
   eapply H; eauto.
@@ -71,7 +70,7 @@ Proof.
 
   Case "XCon".
   eapply TYCon; eauto.
-  apply (Forall2_map_left (TYPE ds ke (delete ix te))).
+  forall2_pull_in_maps.
   apply (Forall2_impl_in  (TYPE ds ke te)); eauto.
   repeat nforall; eauto.
 
@@ -85,7 +84,7 @@ Proof.
   repeat nforall; intros; eauto.
   rewrite map_length; auto.
 
-(* norm. *) repeat nforall.
+  repeat nforall.
   intros. rename x into d.
   rewrite map_map. unfold Basics.compose.
   eapply map_exists_in.
@@ -97,7 +96,7 @@ Proof.
 
   Case "XChoice".
   eapply TYChoice; eauto.
-  apply (Forall2_map_left (TYPE ds ke (delete ix te))).
+  forall2_pull_in_maps.
   apply (Forall2_impl_in  (TYPE ds ke te)); eauto.
   repeat nforall; eauto.
 

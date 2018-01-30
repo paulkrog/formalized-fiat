@@ -39,8 +39,7 @@ Proof.
 
   Case "XTup".
   apply TYTup.
-  apply (Forall2_map_left (TYPE ds (delete ix ke) (substTE ix t2 te))).
-  apply (Forall2_map_right (fun (x : exp) (y : ty) => TYPE ds (delete ix ke) (substTE ix t2 te) (substTX ix t2 x) y)).
+  forall2_pull_in_maps.
   apply (Forall2_impl_in (TYPE ds ke te)); eauto.
   nforall. intros.
   eapply H; eauto.
@@ -63,8 +62,7 @@ Proof.
   assert (substTT ix t2 (TNFun ts t1) = TNFun (map (substTT ix t2) ts) (substTT ix t2 t1)) by auto.
   rewrite <- H0.
   eapply IHx1; eauto.
-  apply (Forall2_map_left (TYPE ds (delete ix ke) (substTE ix t2 te))).
-  apply (Forall2_map_right (fun (x : exp) (y : ty) => TYPE ds (delete ix ke) (substTE ix t2 te) (substTX ix t2 x) y)).
+  forall2_pull_in_maps.
   apply (Forall2_impl_in  (TYPE ds ke te)); eauto.
   nforall. intros.
   eapply H; eauto.
@@ -79,7 +77,7 @@ Proof.
 
   Case "XCon".
   eapply TYCon; eauto.
-  apply (Forall2_map_left (TYPE ds (delete ix ke) (substTE ix t2 te))).
+  forall2_pull_in_maps.
   apply (Forall2_impl_in  (TYPE ds ke te)); eauto.
   nforall; eauto.
   intros. spec H7 H3.
@@ -101,7 +99,7 @@ Proof.
   spec H H0. spec H H1. spec H H3. eauto.
   rewrite map_length; auto.
 
-  (* norm. *) repeat nforall.
+  repeat nforall.
   intros. rename x into d.
   rewrite map_map. unfold Basics.compose.
   eapply map_exists_in.
@@ -120,7 +118,7 @@ Proof.
   rewrite <- H0; auto.
   eapply subst_type_type_ix; eauto.
 
-  apply (Forall2_map_left (TYPE ds (delete ix ke) (substTE ix t2 te))).
+  forall2_pull_in_maps.
   apply (Forall2_impl_in  (TYPE ds ke te)); eauto.
   nforall; eauto.
   intros. apply In_tl in H3. spec H7 H3.
