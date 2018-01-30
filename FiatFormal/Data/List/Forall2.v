@@ -521,3 +521,26 @@ Proof.
  - inverts H.
    apply Forall2_cons; auto.
 Qed.
+
+
+(* Paul Ltac *)
+
+Ltac forall2_pull_in_maps :=
+  repeat (match goal with
+          | H : _ |- Forall2 ?R (map ?f1 ?l1) _ =>
+            apply (Forall2_map_left R)
+          | H : _ |- Forall2 ?R _ (map ?f2 ?l2) =>
+            apply (Forall2_map_right R)
+          end).
+
+Ltac forall2_push_out_map_left :=
+  match goal with
+  | H : _ |- Forall2 ?R ?l1 ?l2 =>
+    apply Forall2_map_left'
+  end.
+
+Ltac forall2_push_out_map_right :=
+  match goal with
+  | H : _ |- Forall2 ?R ?l1 ?l2 =>
+    apply Forall2_map_right'
+  end.
