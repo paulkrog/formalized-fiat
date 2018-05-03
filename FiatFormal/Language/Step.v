@@ -23,26 +23,47 @@ Inductive STEP
      -> STEP ProofBuilder ds ProofBuilderOK
             (C x) (C x')
 
+(* -- Uncomment below for CBV -- *)
+ (* | EsFixApp *)
+ (*   : forall t11 t22 x12 v2, *)
+ (*     wnfX v2 *)
+ (*     -> STEP ProofBuilder ds ProofBuilderOK *)
+ (*            (XApp (XFix t11 t22 x12) v2) *)
+ (*            (substXX 0 (XFix t11 t22 x12) (substXX 0 v2 x12)) *)
+(* -- Comment below for CBV -- *)
  | EsFixApp
-   : forall t11 t22 x12 v2,
-     wnfX v2
-     -> STEP ProofBuilder ds ProofBuilderOK
-            (XApp (XFix t11 t22 x12) v2)
-            (substXX 0 (XFix t11 t22 x12) (substXX 0 v2 x12))
+   : forall t11 t22 x12 x2,
+     STEP ProofBuilder ds ProofBuilderOK
+          (XApp (XFix t11 t22 x12) x2)
+          (substXX 0 (XFix t11 t22 x12) (substXX 0 x2 x12))
 
+(* -- Uncomment below for strict evaluation of tuples -- *)
+ (* | EsTupProj *)
+ (*   : forall vs n v', *)
+ (*     Forall wnfX vs *)
+ (*     -> get n vs = Some v' *)
+ (*     -> STEP ProofBuilder ds ProofBuilderOK *)
+ (*            (XProj n (XTup vs)) v' *)
+(* -- Comment below for strict evaluation of tuples -- *)
  | EsTupProj
-   : forall vs n v',
-     Forall wnfX vs
-     -> get n vs = Some v'
+   : forall xs n x',
+     get n xs = Some x'
      -> STEP ProofBuilder ds ProofBuilderOK
-            (XProj n (XTup vs)) v'
+            (XProj n (XTup xs)) x'
 
+(* -- Uncomment below for CBV -- *)
+ (* | EsNFunApp *)
+ (*   : forall x vs ts, *)
+ (*     Forall wnfX vs *)
+ (*     -> STEP ProofBuilder ds ProofBuilderOK *)
+ (*            (XNApp (XNFun ts x) vs) *)
+ (*            (substXXs 0 vs x) *)
+(* -- Comment below for CBV -- *)
  | EsNFunApp
-   : forall x vs ts,
-     Forall wnfX vs
-     -> STEP ProofBuilder ds ProofBuilderOK
-            (XNApp (XNFun ts x) vs)
-            (substXXs 0 vs x)
+   : forall x xs ts,
+     STEP ProofBuilder ds ProofBuilderOK
+          (XNApp (XNFun ts x) xs)
+          (substXXs 0 xs x)
 
  (* Match branching. *)
  | EsMatchAlt
@@ -53,11 +74,18 @@ Inductive STEP
             (XMatch (XCon dc vs) alts)
             (substXXs 0 vs x)
 
+(* -- Uncomment below for strict evaluation of choice terms -- *)
+ (* | EsChoice *)
+ (*   : forall pc v vs t, *)
+ (*     Forall wnfX (v :: vs) *)
+ (*    -> ProofBuilder pc (v :: vs) *)
+ (*    -> STEP ProofBuilder ds ProofBuilderOK (XChoice t pc vs) v. *)
+(* -- Comment below for strict evaluation of choice terms -- *)
  | EsChoice
-   : forall pc v vs t,
-     Forall wnfX (v :: vs)
-    -> ProofBuilder pc (v :: vs)
-    -> STEP ProofBuilder ds ProofBuilderOK (XChoice t pc vs) v.
+   : forall pc x xs t,
+     Forall wnfX (x :: xs)
+    -> ProofBuilder pc (x :: xs)
+    -> STEP ProofBuilder ds ProofBuilderOK (XChoice t pc xs) x.
 Hint Constructors STEP.
 
 
