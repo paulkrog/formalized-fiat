@@ -252,10 +252,15 @@ Inductive wnfX : exp -> Prop :=
    : forall i
    , wnfX (XVar i)
 
+(* -- Uncomment below for strict evaluation of tuples -- *)
+ (* | Wnf_XTup *)
+ (*   : forall xs, *)
+ (*     Forall wnfX xs *)
+ (*     -> wnfX (XTup xs) *)
+(* -- Comment below for strict evaluation of tuples -- *)
  | Wnf_XTup
    : forall xs,
-     Forall wnfX xs
-     -> wnfX (XTup xs)
+     wnfX (XTup xs)
 
  | Wnf_XNFun
    : forall ts x,

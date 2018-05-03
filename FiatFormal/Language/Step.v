@@ -32,10 +32,10 @@ Inductive STEP
  (*            (substXX 0 (XFix t11 t22 x12) (substXX 0 v2 x12)) *)
 (* -- Comment below for CBV -- *)
  | EsFixApp
-   : forall t11 t22 x12 x2,
+   : forall t11 t22 x12 v2,
      STEP ProofBuilder ds ProofBuilderOK
-          (XApp (XFix t11 t22 x12) x2)
-          (substXX 0 (XFix t11 t22 x12) (substXX 0 x2 x12))
+          (XApp (XFix t11 t22 x12) v2)
+          (substXX 0 (XFix t11 t22 x12) (substXX 0 v2 x12))
 
 (* -- Uncomment below for strict evaluation of tuples -- *)
  (* | EsTupProj *)
@@ -46,10 +46,10 @@ Inductive STEP
  (*            (XProj n (XTup vs)) v' *)
 (* -- Comment below for strict evaluation of tuples -- *)
  | EsTupProj
-   : forall xs n x',
-     get n xs = Some x'
+   : forall vs n v',
+     get n vs = Some v'
      -> STEP ProofBuilder ds ProofBuilderOK
-            (XProj n (XTup xs)) x'
+            (XProj n (XTup vs)) v'
 
 (* -- Uncomment below for CBV -- *)
  (* | EsNFunApp *)
@@ -60,10 +60,10 @@ Inductive STEP
  (*            (substXXs 0 vs x) *)
 (* -- Comment below for CBV -- *)
  | EsNFunApp
-   : forall x xs ts,
+   : forall x vs ts,
      STEP ProofBuilder ds ProofBuilderOK
-          (XNApp (XNFun ts x) xs)
-          (substXXs 0 xs x)
+          (XNApp (XNFun ts x) vs)
+          (substXXs 0 vs x)
 
  (* Match branching. *)
  | EsMatchAlt
@@ -82,10 +82,10 @@ Inductive STEP
  (*    -> STEP ProofBuilder ds ProofBuilderOK (XChoice t pc vs) v. *)
 (* -- Comment below for strict evaluation of choice terms -- *)
  | EsChoice
-   : forall pc x xs t,
-     Forall wnfX (x :: xs)
-    -> ProofBuilder pc (x :: xs)
-    -> STEP ProofBuilder ds ProofBuilderOK (XChoice t pc xs) x.
+   : forall pc v vs t,
+     Forall wnfX (v :: vs)
+    -> ProofBuilder pc (v :: vs)
+    -> STEP ProofBuilder ds ProofBuilderOK (XChoice t pc vs) v.
 Hint Constructors STEP.
 
 
@@ -100,16 +100,16 @@ Proof.
  eapply (EsContext pb ds pbOK (fun xx => XCon dc (C xx))); auto.
 Qed.
 
-Lemma step_context_XTup_exists
-  : forall pb ds pbOK C x,
-    exps_ctx wnfX C
-    -> (exists x', STEP pb ds pbOK x x')
-    -> (exists x', STEP pb ds pbOK (XTup (C x)) (XTup (C x'))).
-Proof.
- intros pb ds pbOK C x HC HS.
- shift x'.
- eapply (EsContext pb ds pbOK (fun xx => XTup (C xx))); auto.
-Qed.
+(* Lemma step_context_XTup_exists *)
+(*   : forall pb ds pbOK C x, *)
+(*     exps_ctx wnfX C *)
+(*     -> (exists x', STEP pb ds pbOK x x') *)
+(*     -> (exists x', STEP pb ds pbOK (XTup (C x)) (XTup (C x'))). *)
+(* Proof. *)
+(*  intros pb ds pbOK C x HC HS. *)
+(*  shift x'. *)
+(*  eapply (EsContext pb ds pbOK (fun xx => XTup (C xx))); auto. *)
+(* Qed. *)
 
 
 (* Small step program evaluation *)
@@ -220,11 +220,11 @@ Proof.
     assert (wnfX x).
     eapply exps_ctx_Forall; eauto.
     rrwrite (x' = x). auto.
-  + Case "XTup".
-    inverts HW.
-    assert (wnfX x).
-    eapply exps_ctx_Forall; eauto.
-    rrwrite (x' = x). auto.
+  (* + Case "XTup". *)
+  (*   inverts HW. *)
+  (*   assert (wnfX x). *)
+  (*   eapply exps_ctx_Forall; eauto. *)
+  (*   rrwrite (x' = x). auto. *)
 Qed.
 
 

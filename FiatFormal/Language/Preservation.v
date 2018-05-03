@@ -196,7 +196,8 @@ Qed.
 
 
 (* When a well typed expression transitions to the next state *)
-(*    then its type is preserved. *)
+(*    then its type is preserved. Commented cases correspond to cases *)
+(*    needed under strict evaluation. *)
 Theorem preservation
   : forall pb ds pbOK x x' t,
     TYPE ds nil nil x t
@@ -214,24 +215,24 @@ Proof.
  eapply TYCon; eauto.
  eapply exps_ctx_Forall2_swap; eauto.
 
- SCase "XChoice".
- eapply TYChoice; eauto.
- eapply exps_ctx_Forall2_swap; eauto.
+ (* SCase "XChoice". *)
+ (* eapply TYChoice; eauto. *)
+ (* eapply exps_ctx_Forall2_swap; eauto. *)
 
- SCase "Tup".
- eapply TYTup; eauto.
- eapply exps_ctx_Forall2_swap; eauto.
+ (* SCase "Tup". *)
+ (* eapply TYTup; eauto. *)
+ (* eapply exps_ctx_Forall2_swap; eauto. *)
 
- SCase "NApp".
- eapply TYNApp; eauto.
- eapply exps_ctx_Forall2_swap; eauto.
+ (* SCase "NApp". *)
+ (* eapply TYNApp; eauto. *)
+ (* eapply exps_ctx_Forall2_swap; eauto. *)
 
  Case "EsFixApp".
  eapply subst_value_value; eauto.
  eapply subst_value_value; eauto.
  assert (v2 = liftXX 1 0 v2).
  eapply liftXX_closed; eauto.
- rewrite H0.
+ rewrite H.
  apply type_tyenv_weaken; auto.
  eapply (Forall2_get_get_same); eauto.
 

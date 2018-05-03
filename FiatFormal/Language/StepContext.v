@@ -64,5 +64,6 @@ Inductive exp_ctx : (exp -> exp) -> Prop :=
  (*   : forall v1 C, *)
  (*     value v1 *)
  (*     -> exps_ctx wnfX C *)
- (*     -> exp_ctx (fun xx => XNApp v1 (C xx)). *)
+ (*     -> exp_ctx (fun xx => XNApp v1 (C xx)) *)
+.
 Hint Constructors exp_ctx.
